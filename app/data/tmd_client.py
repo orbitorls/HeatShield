@@ -1,8 +1,9 @@
-"""Async TMD (Thai Meteorological Department) API client.
+"""Async TMD (Thai Meteorological Department) API client with circuit breaker.
 
 Authentication: Bearer token via TMD_API_KEY env var.
 Rate limiting: Respects Retry-After header on 429.
 Retry policy: 3 attempts, exponential backoff, fail-fast on 401.
+Circuit breaker: Falls back to NASA POWER after consecutive failures.
 """
 from __future__ import annotations
 
@@ -22,6 +23,7 @@ from tenacity import (
 )
 
 from app.data.schemas import StationObservation
+from app.data.circuit_breaker import CircuitOpenError, get_tmd_circuit
 
 logger = logging.getLogger(__name__)
 
@@ -79,18 +81,53 @@ class TMDClient:
     ) -> list[StationObservation]:
         """Fetch hourly observations for a station on a given day.
 
+        Uses circuit breaker for resilience. Falls back to NASA POWER
+        when TMD API is unavailable or circuit is open.
+
         Args:
             station_id: TMD station identifier (e.g. "BKK_01").
             day: The date to fetch (UTC).
 
         Returns:
             List of StationObservation (may be fewer than 24 if station had gaps).
+            Source is "tmd" when TMD succeeds, "nasa_power" on fallback.
 
         Raises:
             TMDAuthError: On 401 — check TMD_API_KEY.
-            TMDAPIError: On other HTTP errors after retries.
+            TMDAPIError: On other HTTP errors after retries (only if fallback also fails).
         """
-        return await self._fetch_with_retry(station_id, day)
+        circuit = get_tmd_circuit()
+        try:
+            result = await circuit.call(self._fetch_with_retry, station_id, day)
+            return result
+        except (CircuitOpenError, TMDAPIError, TMDAuthError) as exc:
+            logger.warning(
+                "TMD failed for %s %s (%s), trying NASA POWER fallback",
+                station_id, day.isoformat(), type(exc).__name__,
+            )
+            return await self._fallback_nasa_power(station_id, day)
+
+    async def _fallback_nasa_power(
+        self, station_id: str, day: date
+    ) -> list[StationObservation]:
+        """Fetch from NASA POWER when TMD is unavailable."""
+        from app.data.nasa_power_client import NASAPowerClient
+
+        client = NASAPowerClient()
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, client.fetch_day, station_id, day)
+            logger.info(
+                "NASA POWER fallback: fetched %d observations for %s %s",
+                len(result), station_id, day.isoformat(),
+            )
+            return result
+        except Exception as exc:
+            logger.error(
+                "NASA POWER fallback also failed for %s %s: %s",
+                station_id, day.isoformat(), exc,
+            )
+            raise TMDAPIError(503, f"TMD unavailable and NASA POWER fallback failed: {exc}") from exc
 
     @retry(
         retry=retry_if_exception(_should_retry),

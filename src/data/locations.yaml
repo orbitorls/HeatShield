@@ -1,0 +1,40 @@
+# Location data for Heat Risk Dashboard
+
+locations:
+  - id: "school_a"
+    name: "โรงเรียน A"
+    name_en: "School A"
+    lat: 13.7563
+    lon: 100.5018
+    type: "school"
+    address: "กรุงเทพมหานคร"
+
+  - id: "school_b"
+    name: "โรงเรียน B"
+    name_en: "School B"
+    lat: 13.8129
+    lon: 100.5294
+    type: "school"
+    address: "กรุงเทพมหานคร"
+
+  - id: "school_c"
+    name: "โรงเรียน C"
+    name_en: "School C"
+    lat: 13.6900
+    lon: 100.7500
+    type: "school"
+    address: "จังหวัดสมุทรสาคร"
+
+  - id: "park_central"
+    name: "สวนกลาง"
+    name_en: "Central Park"
+    lat: 13.7550
+    lon: 100.4950
+    type: "park"
+
+  - id: "market_siam"
+    name: "ตลาดสยาม"
+    name_en: "Siam Market"
+    lat: 13.7460
+    lon: 100.5340
+    type: "market"

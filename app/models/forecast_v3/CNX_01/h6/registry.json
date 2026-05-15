@@ -1,84 +1,74 @@
 {
   "backend_name": "lightgbm_quantile",
   "feature_list": [
-    "wind_ms",
-    "precip_mm",
-    "solar_wm2",
-    "cloud_cover",
-    "pressure_hpa",
-    "blh_m",
-    "hour_sin",
     "hour_cos",
-    "local_hour_sin",
-    "local_hour_cos",
     "doy_sin",
     "doy_cos",
-    "month",
-    "station_enc",
-    "lat",
-    "lon",
-    "elevation_m",
+    "wind_ms",
+    "pressure_hpa",
+    "local_hour_sin",
+    "local_hour_cos",
+    "diurnal_amplitude_12h",
+    "target_h6_hi_clim",
+    "target_h6_hour_sin",
+    "temp_range_24h",
+    "hi_residual_lag1h",
     "heat_index_c_lag1h",
-    "heat_index_c_lag3h",
     "heat_index_c_lag6h",
     "heat_index_c_lag12h",
     "heat_index_c_lag24h",
-    "heat_index_c_lag48h",
-    "heat_index_c_lag72h",
     "temp_c_lag1h",
-    "temp_c_lag3h",
     "temp_c_lag6h",
     "temp_c_lag12h",
     "temp_c_lag24h",
-    "temp_c_lag48h",
-    "temp_c_lag72h",
-    "rh_lag1h",
-    "rh_lag3h",
-    "rh_lag6h",
-    "rh_lag12h",
     "rh_lag24h",
-    "rh_lag48h",
-    "rh_lag72h",
-    "hi_change_3h",
-    "temp_change_3h",
-    "heat_index_c_roll3h_mean",
+    "dewpoint_c_lag1h",
+    "dewpoint_c_lag6h",
+    "dewpoint_c_lag12h",
+    "dewpoint_c_lag24h",
+    "wbgt_stull_c_lag1h",
+    "wbgt_stull_c_lag2h",
+    "wbgt_stull_c_lag3h",
+    "wbgt_stull_c_lag6h",
+    "wbgt_stull_c_lag12h",
+    "wbgt_stull_c_lag24h",
+    "vpd_kpa_lag12h",
     "heat_index_c_roll3h_std",
-    "heat_index_c_roll6h_mean",
     "heat_index_c_roll6h_std",
+    "heat_index_c_roll12h_std",
     "heat_index_c_roll24h_mean",
     "heat_index_c_roll24h_std",
-    "temp_c_roll3h_mean",
     "temp_c_roll3h_std",
-    "temp_c_roll6h_mean",
     "temp_c_roll6h_std",
+    "temp_c_roll12h_std",
     "temp_c_roll24h_mean",
     "temp_c_roll24h_std",
-    "temp_x_rh",
-    "temp_x_evening",
-    "solar_wm2_lag1h",
-    "solar_wm2_lag3h",
-    "solar_wm2_lag6h",
+    "rh_roll3h_std",
+    "rh_roll6h_std",
+    "rh_roll12h_mean",
+    "rh_roll12h_std",
+    "rh_roll24h_mean",
+    "rh_roll24h_std",
+    "dewpoint_c_roll3h_std",
+    "dewpoint_c_roll6h_mean",
+    "dewpoint_c_roll6h_std",
+    "dewpoint_c_roll12h_mean",
+    "dewpoint_c_roll12h_std",
+    "dewpoint_c_roll24h_mean",
+    "dewpoint_c_roll24h_std",
     "solar_wm2_roll6h_mean",
-    "temp_x_solar",
-    "cloud_cover_lag1h",
-    "cloud_cover_lag3h",
-    "cloud_cover_lag6h",
     "pressure_hpa_lag1h",
     "pressure_hpa_lag3h",
     "pressure_hpa_lag6h",
     "wind_ms_lag1h",
-    "wind_ms_lag3h",
-    "precip_mm_lag1h",
-    "precip_mm_lag3h",
-    "_hi_clim",
-    "hi_residual_lag1h"
+    "wind_ms_lag3h"
   ],
   "target_kind": "th",
   "station_id": "CNX_01",
   "horizon_h": 6,
-  "run_id": "20260507T142703Z",
-  "status": "candidate",
-  "n_train_rows": 24389,
+  "run_id": "20260514T143909Z",
+  "status": "ready",
+  "n_train_rows": 30403,
   "horizons": [
     6,
     12,
@@ -89,18 +79,18 @@
   "evaluation": {
     "horizon_h": 6,
     "regression": {
-      "mae": 0.8048805270287734,
-      "rmse": 1.1082438680067854,
-      "bias": -0.08397572807354589,
-      "correlation": 0.9777762698630574,
-      "p50_abs_error": 0.6155229647667113,
-      "p90_abs_error": 1.6857467211844472,
-      "p95_abs_error": 2.1389707316488646
+      "mae": 1.6261714396453841,
+      "rmse": 2.7844776699658014,
+      "bias": -0.07795789702575158,
+      "correlation": 0.9226739279990601,
+      "p50_abs_error": 1.1040849656329712,
+      "p90_abs_error": 3.350618641024079,
+      "p95_abs_error": 4.638181055521739
     },
     "baselines": {
-      "persistence_mae": 5.810718424780786,
-      "climatology_mae": 1.4212818425463314,
-      "skill_score": 0.43369393533743417
+      "persistence_mae": 6.679400607085297,
+      "climatology_mae": 5.161745505726335,
+      "skill_score": 0.6849570677513367
     },
     "risk": {
       "labels": [
@@ -111,22 +101,22 @@
       ],
       "classification_report": {
         "Caution": {
-          "precision": 0.9910943993667128,
-          "recall": 0.9946375372393247,
-          "f1-score": 0.992862807295797,
-          "support": 5035.0
+          "precision": 0.9583023082650782,
+          "recall": 0.9622429906542056,
+          "f1-score": 0.9602686066032456,
+          "support": 5350.0
         },
         "Extreme Caution": {
-          "precision": 0.8421052631578947,
-          "recall": 0.75,
-          "f1-score": 0.7933884297520661,
-          "support": 192.0
+          "precision": 0.7900318133616119,
+          "recall": 0.6400343642611683,
+          "f1-score": 0.7071665875652586,
+          "support": 1164.0
         },
         "Danger": {
           "precision": 0.0,
           "recall": 0.0,
           "f1-score": 0.0,
-          "support": 0.0
+          "support": 2.0
         },
         "Extreme Danger": {
           "precision": 0.0,
@@ -134,36 +124,36 @@
           "f1-score": 0.0,
           "support": 0.0
         },
-        "accuracy": 0.9856514252917543,
+        "accuracy": 0.9043891958256599,
         "macro avg": {
-          "precision": 0.4582999156311519,
-          "recall": 0.43615938430983114,
-          "f1-score": 0.4465628092619658,
-          "support": 5227.0
+          "precision": 0.4370835304066725,
+          "recall": 0.4005693387288435,
+          "f1-score": 0.41685879854212604,
+          "support": 6516.0
         },
         "weighted avg": {
-          "precision": 0.9856216780825933,
-          "recall": 0.9856514252917543,
-          "f1-score": 0.9855356443938654,
-          "support": 5227.0
+          "precision": 0.9279487998727878,
+          "recall": 0.9043891958256599,
+          "f1-score": 0.9147604286760782,
+          "support": 6516.0
         }
       },
       "confusion_matrix": [
         [
-          5008,
-          27,
-          0,
-          0
+          5148,
+          196,
+          2,
+          4
         ],
         [
-          45,
-          144,
-          3,
-          0
+          224,
+          745,
+          192,
+          3
         ],
         [
           0,
-          0,
+          2,
           0,
           0
         ],
@@ -176,20 +166,20 @@
       ],
       "confusion_matrix_normalized": [
         [
-          0.9946375372393247,
-          0.005362462760675273,
-          0.0,
-          0.0
+          0.9622429906542056,
+          0.03663551401869159,
+          0.00037383177570093456,
+          0.0007476635514018691
         ],
         [
-          0.234375,
-          0.75,
-          0.015625,
-          0.0
+          0.19243986254295534,
+          0.6400343642611683,
+          0.16494845360824742,
+          0.002577319587628866
         ],
         [
           0.0,
-          0.0,
+          1.0,
           0.0,
           0.0
         ],
@@ -203,50 +193,50 @@
     },
     "safety": {
       "danger_40": {
-        "support": 0,
-        "recall": null,
-        "false_negative_rate": null
+        "support": 24,
+        "recall": 0.75,
+        "false_negative_rate": 0.25
       },
       "danger_42": {
-        "support": 0,
-        "recall": null,
-        "false_negative_rate": null
+        "support": 2,
+        "recall": 0.0,
+        "false_negative_rate": 1.0
       }
     },
     "prediction_interval": {
       "available": true,
-      "coverage_90": 0.9414578151903578,
-      "mean_width": 4.524182121254016,
-      "p25_width": 3.2777413972789553,
-      "p75_width": 5.450444653128244,
-      "width_ratio": 1.6628659776677246,
-      "pinball_q05": 0.1234437512699308,
-      "pinball_q95": 0.13065016859515194
+      "coverage_90": 0.851903007980356,
+      "mean_width": 6.060852887847988,
+      "p25_width": 3.1099053156052605,
+      "p75_width": 8.026776185281705,
+      "width_ratio": 2.5810355527558904,
+      "pinball_q05": 0.2191598507711794,
+      "pinball_q95": 0.22602586896297497
     },
     "runtime": {
-      "feature_rows": 5227,
-      "train_seconds": 443.6414274999988,
-      "eval_seconds": 0.010502400000405032
+      "feature_rows": 6516,
+      "train_seconds": 40.21031220000077,
+      "eval_seconds": 0.01167889999851468
     },
     "split": {
       "horizon_h": 6,
       "row_counts": {
-        "train": 24389,
-        "val": 5226,
-        "test": 5227
+        "train": 30403,
+        "val": 6515,
+        "test": 6516
       },
       "date_ranges": {
         "train": {
-          "start": "2021-05-10 00:00:00+00:00",
-          "end": "2024-02-20 04:00:00+00:00"
+          "start": "2021-05-28 00:00:00+00:00",
+          "end": "2024-11-14 18:00:00+00:00"
         },
         "val": {
-          "start": "2024-02-20 05:00:00+00:00",
-          "end": "2024-09-24 22:00:00+00:00"
+          "start": "2024-11-14 19:00:00+00:00",
+          "end": "2025-08-13 05:00:00+00:00"
         },
         "test": {
-          "start": "2024-09-24 23:00:00+00:00",
-          "end": "2025-04-30 17:00:00+00:00"
+          "start": "2025-08-13 06:00:00+00:00",
+          "end": "2026-05-11 17:00:00+00:00"
         }
       },
       "stations": [

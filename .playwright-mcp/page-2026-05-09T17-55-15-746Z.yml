@@ -1,0 +1,83 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "ข้ามไปเนื้อหาหลัก" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e4]:
+      - link "HeatShield AI — หน้าหลัก" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - text: HeatShield
+      - button "เลือกสถานี" [ref=e12]:
+        - img [ref=e13]
+        - text: สถานี
+        - img [ref=e16]
+    - main [ref=e18]:
+      - main [ref=e19]:
+        - link "← หน้าหลัก" [ref=e20] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e23]:
+          - paragraph [ref=e24]: เครื่องมือ
+          - heading "เช็คความเสี่ยง" [level=2] [ref=e25]
+          - paragraph [ref=e26]: ปรับตัวแปรด้านล่างแล้วดูคะแนนความเสี่ยงทันที
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - generic [ref=e30]:
+                - generic [ref=e31]: อุณหภูมิ (°C)
+                - spinbutton [ref=e32]: "35"
+              - generic [ref=e33]:
+                - generic [ref=e34]: ความชื้นสัมพัทธ์ (%)
+                - spinbutton [ref=e35]: "70"
+            - generic [ref=e36]:
+              - generic [ref=e37]: กลุ่มผู้ใช้
+              - combobox [ref=e38]:
+                - option "นักเรียนประถมศึกษา"
+                - option "นักเรียนมัธยมศึกษา"
+                - option "นิสิต/นักศึกษา"
+                - option "แรงงานกลางแจ้งทั่วไป"
+                - option "แรงงานก่อสร้าง/เกษตร"
+                - option "นักกีฬา/ผู้เล่นกีฬา"
+                - option "ผู้สูงอายุ"
+                - option "ผู้ใหญ่ทั่วไป" [selected]
+            - generic [ref=e39]:
+              - generic [ref=e40]: ระดับกิจกรรม
+              - generic [ref=e41]:
+                - button "พัก/นั่ง" [ref=e42] [cursor=pointer]
+                - button "เบา (เดิน)" [ref=e43] [cursor=pointer]
+                - button "ปานกลาง (พลศึกษา)" [ref=e44] [cursor=pointer]
+                - button "หนัก (วิ่ง)" [ref=e45] [cursor=pointer]
+                - button "หนักมาก (แข่งขัน)" [ref=e46] [cursor=pointer]
+            - generic [ref=e47]:
+              - generic [ref=e48]:
+                - generic [ref=e49]: ระยะเวลา
+                - generic [ref=e50]: 60 นาที
+              - slider "ระยะเวลา" [ref=e51]: "60"
+              - generic [ref=e52]:
+                - generic [ref=e53]: 0 นาที
+                - generic [ref=e54]: 720 นาที
+            - generic [ref=e55]:
+              - generic [ref=e56]:
+                - generic [ref=e57]: เวลาของวัน
+                - generic [ref=e58]: 13:00 น.
+              - slider "เวลาของวัน" [ref=e59]: "13"
+              - generic [ref=e60]:
+                - generic [ref=e61]: 00:00
+                - generic [ref=e62]: 23:00
+            - generic [ref=e63]:
+              - generic [ref=e64]: สภาพแวดล้อม
+              - generic [ref=e65]:
+                - generic [ref=e66] [cursor=pointer]:
+                  - checkbox "มีร่มเงา" [ref=e67]
+                  - text: มีร่มเงา
+                - generic [ref=e68] [cursor=pointer]:
+                  - checkbox "มีน้ำดื่ม" [checked] [ref=e69]
+                  - text: มีน้ำดื่ม
+                - generic [ref=e70] [cursor=pointer]:
+                  - checkbox "ชินร้อน" [ref=e71]
+                  - text: ชินร้อน
+          - heading "ผลลัพธ์" [level=2] [ref=e74]
+    - contentinfo [ref=e80]:
+      - paragraph [ref=e81]: HeatShield AI — ข้อมูลจาก TMD · ERA5 · NASA POWER
+      - paragraph [ref=e82]: 5 สถานี · Thailand
+  - button "Open Next.js Dev Tools" [ref=e88] [cursor=pointer]:
+    - img [ref=e89]

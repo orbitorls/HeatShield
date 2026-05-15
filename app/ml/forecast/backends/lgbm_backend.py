@@ -32,10 +32,11 @@ _QUANTILES = [0.05, 0.50, 0.95, 0.97]
 _TARGETS = ["temp_c", "rh"]
 _SEEDS = [42, 123, 7]          # ensemble seeds for median (q50) — needs 3 for stability
 _SEEDS_TAIL = [42]             # single seed for tail quantiles (q05/q95/q97) — sufficient
-_CV_SPLITS = 3
+_CV_SPLITS = 2
 _CV_GAP_HOURS = 72
 _LGBM_DEVICE_SUPPORT: dict[str, bool] = {}
 _HW_DEVICE: str | None = None
+_DEVICE_LOGGED: bool = False
 
 # Detect best LightGBM device.
 # Hardware probe runs once at import; env overrides are re-read on every call.
@@ -132,16 +133,20 @@ def _detect_device() -> str:
     (LGBM_DEVICE, HEATSHIELD_FORCE_CPU) are re-read each call so test fixtures
     and shell changes made after import are respected.
     """
-    global _HW_DEVICE
+    global _HW_DEVICE, _DEVICE_LOGGED
     import os
     env = os.environ.get("LGBM_DEVICE", "").lower()
     if env:
         if _supports_lgbm_device(env):
-            logger.info("LightGBM device forced via LGBM_DEVICE=%s", env)
+            if not _DEVICE_LOGGED:
+                logger.info("LightGBM device forced via LGBM_DEVICE=%s", env)
+                _DEVICE_LOGGED = True
             return env
         logger.warning("LGBM_DEVICE=%s is not supported by this LightGBM build. Falling back to auto-detect.", env)
     if os.environ.get("HEATSHIELD_FORCE_CPU") == "1":
-        logger.info("LightGBM forced to CPU (HEATSHIELD_FORCE_CPU=1)")
+        if not _DEVICE_LOGGED:
+            logger.info("LightGBM forced to CPU (HEATSHIELD_FORCE_CPU=1)")
+            _DEVICE_LOGGED = True
         return "cpu"
     if _HW_DEVICE is None:
         _HW_DEVICE = _probe_lgbm_hardware()
@@ -159,6 +164,7 @@ _DEFAULT_PARAMS = {
     "objective": "quantile",
     "metric": "quantile",
     "verbose": -1,
+    "max_bin": 63,  # GPU-friendly: smaller bins = faster training
 }
 
 # Change 6: persistent Optuna study path
@@ -178,6 +184,8 @@ def _lgbm_thread_count(device: str, parallel_jobs: int = 1) -> int | None:
 
 def _lgbm_device_params(device: str, parallel_jobs: int = 1) -> dict:
     params = {"device_type": device}
+    if device in ("cuda", "gpu"):
+        params["gpu_use_dp"] = False  # Single precision for faster GPU training
     n_jobs = _lgbm_thread_count(device, parallel_jobs=parallel_jobs)
     if n_jobs is not None:
         params["n_jobs"] = n_jobs
@@ -265,14 +273,54 @@ def _compute_dense_weights(
     if len(y) < 20 or np.nanstd(y) < 1e-6:
         return np.ones(len(y), dtype=float)
     try:
-        from scipy.stats import gaussian_kde
-        kde = gaussian_kde(y)
-        density = np.clip(kde(y), 1e-9, None)
+        # Histogram-based density estimation (O(n) instead of O(n²) KDE)
+        counts, edges = np.histogram(y, bins=100, density=True)
+        indices = np.clip(np.searchsorted(edges, y) - 1, 0, len(counts) - 1)
+        density = np.clip(counts[indices], 1e-9, None)
         weight = 1.0 / (density ** float(alpha))
         weight = weight / max(float(np.mean(weight)), 1e-9)
         return np.clip(weight, min_weight, max_weight)
     except Exception:
         return np.ones(len(y), dtype=float)
+
+
+def _compute_combined_weights(
+    y_hi: np.ndarray,
+    *,
+    dense_alpha: float = 0.8,
+    danger_alpha: float = 3.0,
+    danger_threshold: float = 40.0,
+    min_weight: float = 0.25,
+    max_weight: float = 6.0,
+) -> np.ndarray:
+    """Density-aware + danger-aware sample weights (Focal-L1 style).
+
+    Merges KDE-based rarity weighting with focal up-weighting for
+    high-heat samples (HI >= danger_threshold). Penalises missing
+    rare danger events more than over-predicting them.
+    """
+    dense = _compute_dense_weights(
+        y_hi, alpha=dense_alpha, min_weight=min_weight, max_weight=max_weight
+    )
+    focal = np.ones(len(y_hi), dtype=float)
+    danger_mask = y_hi >= danger_threshold
+    near_mask = (y_hi >= danger_threshold - 2.0) & (y_hi < danger_threshold)
+    focal[danger_mask] = danger_alpha
+    focal[near_mask] = max(1.0, danger_alpha * 0.5)
+    focal = focal / max(float(np.mean(focal)), 1e-9)
+    combined = dense * focal
+    return np.clip(combined, min_weight, max_weight)
+
+
+def _danger_alpha_for_horizon(horizon_h: int) -> float:
+    """Return danger focal weight scaled by horizon.
+
+    Short horizons (h6/h12) get moderate up-weighting because the model
+    has enough recent context to detect danger accurately.
+    Long horizons (h48/h72) get aggressive up-weighting because danger
+    events become harder to predict and the cost of missing them is higher.
+    """
+    return {6: 3.0, 12: 3.0, 24: 4.0, 48: 5.0, 72: 6.0}.get(horizon_h, 3.0)
 
 
 def _expanding_window_splits(
@@ -320,9 +368,9 @@ def _train_single_booster(
     return lgb.train(
         params,
         dtrain,
-        num_boost_round=2000,
+        num_boost_round=500,
         valid_sets=[dval],
-        callbacks=[lgb.early_stopping(50, verbose=False), lgb.log_evaluation(-1)],
+        callbacks=[lgb.early_stopping(30, verbose=False), lgb.log_evaluation(-1)],
     )
 
 
@@ -353,10 +401,10 @@ def _train_cached_lgb_booster(
     return lgb.train(
         params,
         dtrain,
-        num_boost_round=2000,
+        num_boost_round=500,
         valid_sets=[dval],
         callbacks=[
-            lgb.early_stopping(50, verbose=False),
+            lgb.early_stopping(30, verbose=False),
             lgb.log_evaluation(-1),
         ],
     )
@@ -423,7 +471,7 @@ class LGBMForecaster:
 
     def __init__(
         self,
-        n_trials: int = 50,
+        n_trials: int = 40,
         random_state: int = 42,
         gate_backend: str = "lightgbm",
     ) -> None:
@@ -441,6 +489,48 @@ class LGBMForecaster:
         self._gate: DangerGate | None = None
         self._feature_medians: dict = {}
         self._metadata: dict = {}
+
+    # ------------------------------------------------------------------
+    # Training
+    # ------------------------------------------------------------------
+
+    # ------------------------------------------------------------------
+    # Oversampling
+    # ------------------------------------------------------------------
+
+    def _maybe_oversample_train(
+        self,
+        X_train: pd.DataFrame,
+        y_train: pd.DataFrame,
+        support_threshold: int = 200,
+        noise_std: float = 0.5,
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Duplicate near-danger rows (HI 39-42°C) with small Gaussian noise
+        when natural danger support is below threshold. ONLY applied to train split."""
+        y_hi_train = _compute_hi_array(y_train["temp_c"].values, y_train["rh"].values)
+        n_danger = int((y_hi_train >= 42.0).sum())
+        if n_danger >= support_threshold:
+            return X_train, y_train
+
+        near_mask = (y_hi_train >= 39.0) & (y_hi_train < 42.0)
+        n_near = int(near_mask.sum())
+        if n_near == 0:
+            return X_train, y_train
+
+        copies_needed = max(1, (support_threshold - n_danger) // n_near)
+        rng = np.random.default_rng(42)
+
+        X_dup = pd.concat([X_train[near_mask]] * copies_needed, ignore_index=True)
+        y_dup = pd.concat([y_train[near_mask]] * copies_needed, ignore_index=True)
+
+        for col in X_dup.select_dtypes(include=[np.number]).columns:
+            X_dup[col] = X_dup[col] + rng.normal(0, noise_std, len(X_dup))
+        for col in y_dup.select_dtypes(include=[np.number]).columns:
+            y_dup[col] = y_dup[col] + rng.normal(0, noise_std * 0.5, len(y_dup))
+
+        X_out = pd.concat([X_train.reset_index(drop=True), X_dup], ignore_index=True)
+        y_out = pd.concat([y_train.reset_index(drop=True), y_dup], ignore_index=True)
+        return X_out, y_out
 
     # ------------------------------------------------------------------
     # Training
@@ -482,6 +572,7 @@ class LGBMForecaster:
         X_val_es, y_val_es = split.X_val_es, split.y_val_es
         X_val_cal, y_val_cal = split.X_val_cal, split.y_val_cal
         X_test, y_test = split.X_test, split.y_test
+        X_train, y_train = self._maybe_oversample_train(X_train, y_train)
         n = len(X)
         n_train = len(X_train)
         n_val_es = len(X_val_es)
@@ -508,7 +599,10 @@ class LGBMForecaster:
         y_hi_tune = _compute_hi_array(y_temp_tune.values, y_rh_tune.values)
 
         dense_alpha_init = 0.8
-        dense_weights = _compute_dense_weights(y_hi_tune, alpha=dense_alpha_init)
+        dense_weights = _compute_combined_weights(
+            y_hi_tune, dense_alpha=dense_alpha_init,
+            danger_alpha=_danger_alpha_for_horizon(horizon_h),
+        )
         self._best_params = self._tune(
             X_tune,
             y_temp_tune,
@@ -520,15 +614,17 @@ class LGBMForecaster:
         dense_alpha = float(self._best_params.pop("dense_alpha", dense_alpha_init))
         self._metadata["dense_alpha"] = dense_alpha
         del X_tune, y_temp_tune, y_rh_tune, y_hi_tune, dense_weights
-        gc.collect()
 
         y_hi_train = _compute_hi_array(y_train["temp_c"].values, y_train["rh"].values)
-        weights_train = _compute_dense_weights(y_hi_train, alpha=dense_alpha)
+        weights_train = _compute_combined_weights(
+            y_hi_train, dense_alpha=dense_alpha,
+            danger_alpha=_danger_alpha_for_horizon(horizon_h),
+        )
 
         device = _detect_device()
         is_gpu = "gpu" in device.lower() or "cuda" in device.lower()
 
-        # Phase 1: pilot booster with early stopping on val_es to find best_iter.
+        # Phase 1: pilot boosters with early stopping on val_es to find best_iter.
         pilot_params = {
             **_DEFAULT_PARAMS,
             **self._best_params,
@@ -536,48 +632,78 @@ class LGBMForecaster:
             "alpha": 0.50,
             "seed": self.random_state,
         }
-        pilot_booster = lgb.train(
+        pilot_temp = lgb.train(
             pilot_params,
             lgb.Dataset(X_train, label=y_train["temp_c"].values, weight=weights_train),
-            num_boost_round=2000,
+            num_boost_round=500,
             valid_sets=[lgb.Dataset(X_val_es, label=y_val_es["temp_c"].values)],
-            callbacks=[lgb.early_stopping(50, verbose=False), lgb.log_evaluation(-1)],
+            callbacks=[lgb.early_stopping(30, verbose=False), lgb.log_evaluation(-1)],
         )
-        best_iter = max(pilot_booster.best_iteration, 1)
-        logger.info("Pilot early-stop: best_iter=%d", best_iter)
-        del pilot_booster
+        pilot_temp_best = max(pilot_temp.best_iteration, 1)
+
+        pilot_rh = lgb.train(
+            pilot_params,
+            lgb.Dataset(X_train, label=y_train["rh"].values, weight=weights_train),
+            num_boost_round=500,
+            valid_sets=[lgb.Dataset(X_val_es, label=y_val_es["rh"].values)],
+            callbacks=[lgb.early_stopping(30, verbose=False), lgb.log_evaluation(-1)],
+        )
+        pilot_rh_best = max(pilot_rh.best_iteration, 1)
+
+        best_iter = max(pilot_temp_best, pilot_rh_best)
+        logger.info("Multi-pilot early-stop: temp_best_iter=%d rh_best_iter=%d final=%d",
+                     pilot_temp_best, pilot_rh_best, best_iter)
+        del pilot_temp, pilot_rh
         gc.collect()
 
         # Phase 2: refit ALL boosters on train+val_es at best_iter (no early-stop).
         X_tv = pd.concat([X_train, X_val_es], ignore_index=True)
         y_tv = pd.concat([y_train, y_val_es], ignore_index=True)
         y_hi_tv = _compute_hi_array(y_tv["temp_c"].values, y_tv["rh"].values)
-        weights_tv = _compute_dense_weights(y_hi_tv, alpha=dense_alpha)
+        weights_tv = _compute_combined_weights(
+            y_hi_tv, dense_alpha=dense_alpha,
+            danger_alpha=_danger_alpha_for_horizon(horizon_h),
+        )
 
         if is_gpu:
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            max_gpu_jobs = min(4, int(os.environ.get("LGBM_GPU_JOBS", "4")))
+
+            all_jobs = []
+            for target in _TARGETS:
+                for q_idx, alpha in enumerate(_QUANTILES):
+                    seeds = _SEEDS if alpha == 0.50 else _SEEDS_TAIL
+                    for seed in seeds:
+                        all_jobs.append((target, q_idx, alpha, seed))
+
+            future_to_job = {}
+            with ThreadPoolExecutor(max_workers=max_gpu_jobs) as pool:
+                for target, q_idx, alpha, seed in all_jobs:
+                    future = pool.submit(
+                        _refit_single_booster,
+                        target, alpha, seed,
+                        X_tv, y_tv[target].values,
+                        weights_tv, self._best_params,
+                        best_iter, max_gpu_jobs,
+                    )
+                    future_to_job[future] = (target, q_idx, alpha, seed)
+
+                results = {}
+                for future in as_completed(future_to_job):
+                    target, q_idx, alpha, seed = future_to_job[future]
+                    results[(target, q_idx, alpha, seed)] = future.result()
+
             for target in _TARGETS:
                 for q_idx, alpha in enumerate(_QUANTILES):
                     seeds = _SEEDS if alpha == 0.50 else _SEEDS_TAIL
                     seed_boosters = []
                     for seed in seeds:
-                        params = {
-                            **_DEFAULT_PARAMS,
-                            **self._best_params,
-                            **_lgbm_device_params(_detect_device()),
-                            "alpha": alpha,
-                            "seed": seed,
-                        }
-                        params = _add_monotone_constraints_if_supported(params, list(X_tv.columns))
-                        booster = lgb.train(
-                            params,
-                            lgb.Dataset(X_tv, label=y_tv[target].values, weight=weights_tv),
-                            num_boost_round=best_iter,
-                        )
-                        seed_boosters.append(booster)
+                        seed_boosters.append(results[(target, q_idx, alpha, seed)])
                     self._boosters[target][q_idx] = seed_boosters
                     logger.debug("Refit booster: target=%s q=%.2f seeds=%d", target, alpha, len(seeds))
         else:
-            n_jobs = max(1, min(int(os.environ.get("LGBM_PARALLEL_BOOSTERS", "3")), os.cpu_count() or 1))
+            cpu_count = os.cpu_count() or 1
+            n_jobs = max(1, min(int(os.environ.get("LGBM_PARALLEL_BOOSTERS", str(max(1, cpu_count // 2)))), cpu_count))
             jobs = [
                 (target, q_idx, alpha, seed)
                 for target in _TARGETS
@@ -616,24 +742,36 @@ class LGBMForecaster:
         self._metadata["gate_warning_threshold"] = float(self._gate.warning_threshold)
         self._metadata["gate_danger_threshold"] = float(self._gate.danger_threshold)
 
-        # Mondrian CQR calibration on val_cal — boosters and gate never saw this split.
+        # Split-conformal PI calibration on val_cal — boosters and gate never saw this.
+        # Fitting on [hi_mean, hi_mean] (zero-width) makes MondianCQR store
+        # quantile(|y_true - hi_mean|) per stratum.  At inference, _calibrate()
+        # then returns [hi_mean - q_hat, hi_mean + q_hat] — a symmetric, tight PI.
+        # This replaces the diagonal Rothfusz composition bounds (which were ~15°C
+        # wide because the raw q05/q95 T heads carry heavy uncertainty).
         bundle_val_cal = self._predict_bundle(X_val_cal)
         station_ids_cal = np.full(len(X_val_cal), station_id)
         angles_cal = np.arctan2(X_val_cal["local_hour_sin"].values, X_val_cal["local_hour_cos"].values)
         local_hours_cal = np.round(angles_cal * 24 / (2 * np.pi)).astype(int) % 24
         danger_tier_cal = self._gate.predict_tier(X_val_cal) if self._gate else np.zeros(len(X_val_cal), dtype=int)
+        hi_mean_cal = bundle_val_cal.hi_mean
+
+        # Compute and store bias correction from val_cal
+        bias = float(np.mean(hi_mean_cal - y_hi_val_cal))
+        self._metadata["bias_correction"] = bias
+        logger.info("Bias correction computed: %.3f°C", bias)
+
         self._calibrator = MondianCQRCalibrator()
         self._calibrator.fit(
             y_hi_val_cal,
-            bundle_val_cal.hi_lower,
-            bundle_val_cal.hi_upper,
+            hi_mean_cal,
+            hi_mean_cal,
             station_ids=station_ids_cal,
             local_hours=local_hours_cal,
             danger_tiers=danger_tier_cal,
-            alpha=0.10,
+            alpha=0.10,  # Target 90% coverage; tighter PI width without under-coverage
         )
 
-        lo_cal, hi_cal = self._calibrate(X_val_cal, bundle_val_cal.hi_lower, bundle_val_cal.hi_upper)
+        lo_cal, hi_cal = self._calibrate(X_val_cal, hi_mean_cal, hi_mean_cal)
         self._metadata["median_pi_width"] = float(np.median(hi_cal - lo_cal))
 
         if len(X_test) > 0:
@@ -677,6 +815,10 @@ class LGBMForecaster:
         dev = _detect_device()
         _max_bin_choices = [127, 255, 511]
 
+        # Long-horizon slots overfit to noisy short lags — cap tree complexity.
+        _max_leaves = 64 if horizon_h >= 48 else 256
+        _max_depth  = 5  if horizon_h >= 48 else 12
+
         def objective(trial: optuna.Trial) -> float:
             dense_alpha = trial.suggest_float("dense_alpha", 0.3, 1.5)
             _suggested_bin = trial.suggest_categorical("max_bin", _max_bin_choices)
@@ -685,8 +827,8 @@ class LGBMForecaster:
                 **_DEFAULT_PARAMS,
                 **_lgbm_device_params(dev),
                 "alpha": 0.50,
-                "num_leaves": trial.suggest_int("num_leaves", 64, 256),
-                "max_depth": trial.suggest_int("max_depth", 4, 12),
+                "num_leaves": trial.suggest_int("num_leaves", 16, _max_leaves),
+                "max_depth": trial.suggest_int("max_depth", 3, _max_depth),
                 "max_bin": _effective_bin,
                 "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.1, log=True),
                 "subsample": trial.suggest_float("subsample", 0.6, 1.0),
@@ -715,10 +857,13 @@ class LGBMForecaster:
                 if dense_weights is not None:
                     weights = dense_weights[tr_idx]
                 else:
-                    weights = _compute_dense_weights(y_hi_for_weights[tr_idx], alpha=dense_alpha)
+                    weights = _compute_combined_weights(
+                        y_hi_for_weights[tr_idx], dense_alpha=dense_alpha,
+                        danger_alpha=_danger_alpha_for_horizon(horizon_h),
+                    )
                 dtrain = lgb.Dataset(X_train, label=y_train, weight=weights)
                 dval = lgb.Dataset(X_val, label=y_val, reference=dtrain)
-                _trial_rounds = int(os.environ.get("LGBM_TUNE_ROUNDS", "300"))
+                _trial_rounds = int(os.environ.get("LGBM_TUNE_ROUNDS", "50"))
                 booster = lgb.train(
                     params,
                     dtrain,
@@ -758,8 +903,8 @@ class LGBMForecaster:
             study = optuna.create_study(
                 study_name=study_name,
                 direction="minimize",
-                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=20),
-                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=20, reduction_factor=2),
+                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=5),
+                pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10, interval_steps=1),
                 storage=_storage,
                 load_if_exists=True,
             )
@@ -767,8 +912,8 @@ class LGBMForecaster:
             logger.warning("Optuna persistent storage unavailable (%s). Falling back to in-memory study.", exc)
             study = optuna.create_study(
                 direction="minimize",
-                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=20),
-                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=20, reduction_factor=2),
+                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=5),
+                pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=10, interval_steps=1),
             )
         run_id = os.environ.get("HEATSHIELD_RUN_ID")
         slot = f"{self._station_id}:h{self._horizon_h}"
@@ -867,6 +1012,15 @@ class LGBMForecaster:
         # Change 3e: renamed from _predict_bundle (inner raw logic), returns plain dict
         preds = self._predict_th(X)
         hi_mean, hi_lower, hi_upper, hi_q97 = self._compose_hi(preds)
+
+        # Apply bias correction computed from val_cal
+        bias = self._metadata.get("bias_correction", 0.0)
+        if bias != 0.0:
+            hi_mean = hi_mean - bias
+            hi_lower = hi_lower - bias
+            hi_upper = hi_upper - bias
+            hi_q97 = hi_q97 - bias
+
         danger_proba = self._gate.predict_proba(self._align(X)) if self._gate else None
         return {
             "hi_mean": hi_mean,
@@ -891,10 +1045,10 @@ class LGBMForecaster:
         )
 
     def _predict_bundle_calibrated(self, X: pd.DataFrame) -> PredictionBundle:
-        """Calibrated bundle (Mondrian CQR-adjusted)."""
+        """Calibrated bundle — split-conformal PI centred on hi_mean."""
         X = self._align(X)
         bundle = self._predict_bundle(X)
-        lo_cal, hi_cal = self._calibrate(X, bundle.hi_lower, bundle.hi_upper)
+        lo_cal, hi_cal = self._calibrate(X, bundle.hi_mean, bundle.hi_mean)
         return PredictionBundle(
             hi_mean=bundle.hi_mean, hi_lower=lo_cal, hi_upper=hi_cal,
             temp_mean=bundle.temp_mean, rh_mean=bundle.rh_mean,
@@ -930,8 +1084,9 @@ class LGBMForecaster:
         danger_proba = raw["danger_proba"]
         danger_tier = self._gate.predict_tier(X_aligned) if self._gate else np.zeros(len(X_aligned), dtype=int)
 
-        # Mondrian CQR calibration
-        hi_lower, hi_upper = self._calibrate(X_aligned, hi_lower, hi_upper)
+        # Mondrian CQR calibration — pass hi_mean as both bounds so q_hat is
+        # applied symmetrically: PI = hi_mean ± q_hat (matches how calibrator was fit)
+        hi_lower, hi_upper = self._calibrate(X_aligned, hi_mean, hi_mean)
 
         # Tier-aware gate override.
         warning_mask = danger_tier == 1
@@ -1041,7 +1196,7 @@ class LGBMDirectHIForecaster:
     backend_name: str = "lightgbm_hi_quantile"
     target_kind: Literal["hi", "th"] = "hi"
 
-    def __init__(self, n_trials: int = 50, random_state: int = 42, gate_backend: str = "lightgbm") -> None:
+    def __init__(self, n_trials: int = 40, random_state: int = 42, gate_backend: str = "lightgbm") -> None:
         self.n_trials = n_trials
         self.random_state = random_state
         self._gate_backend = gate_backend  # accepted for API symmetry with LGBMForecaster; not used in fit
@@ -1110,9 +1265,9 @@ class LGBMDirectHIForecaster:
         pilot_booster = lgb.train(
             pilot_params,
             lgb.Dataset(X_train, label=y_train.to_numpy(dtype=float), weight=weights),
-            num_boost_round=2000,
+            num_boost_round=500,
             valid_sets=[lgb.Dataset(X_val_es, label=y_val_es.to_numpy(dtype=float))],
-            callbacks=[lgb.early_stopping(50, verbose=False), lgb.log_evaluation(-1)],
+            callbacks=[lgb.early_stopping(30, verbose=False), lgb.log_evaluation(-1)],
         )
         best_iter = max(pilot_booster.best_iteration, 1)
         logger.info("DirectHI pilot early-stop: best_iter=%d", best_iter)
@@ -1261,8 +1416,8 @@ class LGBMDirectHIForecaster:
             study = optuna.create_study(
                 study_name=study_name,
                 direction="minimize",
-                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=20),
-                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=20, reduction_factor=2),
+                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=10),
+                pruner=optuna.pruners.HyperbandPruner(min_resource=1, max_resource=150, reduction_factor=3),
                 storage=_storage,
                 load_if_exists=True,
             )
@@ -1270,8 +1425,8 @@ class LGBMDirectHIForecaster:
             logger.warning("Optuna persistent storage unavailable (%s). Falling back to in-memory study.", exc)
             study = optuna.create_study(
                 direction="minimize",
-                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=20),
-                pruner=optuna.pruners.SuccessiveHalvingPruner(min_resource=20, reduction_factor=2),
+                sampler=optuna.samplers.TPESampler(seed=self.random_state, n_startup_trials=10),
+                pruner=optuna.pruners.HyperbandPruner(min_resource=1, max_resource=150, reduction_factor=3),
             )
         run_id = os.environ.get("HEATSHIELD_RUN_ID")
         slot = f"{self._station_id}:h{self._horizon_h}"

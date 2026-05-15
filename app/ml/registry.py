@@ -449,3 +449,69 @@ def list_v3_models() -> dict:
     if not matrix_path.exists():
         return {}
     return json.loads(matrix_path.read_text())
+
+
+class LazyModelLoader:
+    """Lazy-loading wrapper for v2 multi-horizon ensembles.
+
+    Loads individual horizon boosters on first access instead of pulling
+    everything into memory at startup. Keeps a bounded LRU of loaded
+    horizons to prevent unbounded memory growth.
+    """
+
+    def __init__(self, model_dir: Path, metadata: dict, max_cached_horizons: int = 3) -> None:
+        self._model_dir = model_dir
+        self.metadata = metadata
+        self._max_cached = max_cached_horizons
+        self._cache: dict[int, dict[str, list[xgb.Booster]]] = {}
+        self._cache_order: list[int] = []
+        self._available_horizons: list[int] | None = None
+
+    @property
+    def available_horizons(self) -> list[int]:
+        if self._available_horizons is None:
+            self._available_horizons = sorted(
+                int(d.name[1:])
+                for d in self._model_dir.iterdir()
+                if d.is_dir() and re.match(r"^h\d+$", d.name)
+            )
+        return self._available_horizons
+
+    def _load_horizon(self, horizon: int) -> dict[str, list[xgb.Booster]]:
+        """Load (or return cached) boosters for a single horizon."""
+        if horizon in self._cache:
+            # Move to MRU
+            self._cache_order.remove(horizon)
+            self._cache_order.append(horizon)
+            return self._cache[horizon]
+
+        h_dir = self._model_dir / f"h{horizon}"
+        if not h_dir.exists():
+            raise FileNotFoundError(
+                f"Horizon h{horizon} not found in {self._model_dir}. "
+                f"Available: {self.available_horizons}"
+            )
+
+        boosters = _load_role_boosters(h_dir)
+        self._cache[horizon] = boosters
+        self._cache_order.append(horizon)
+
+        while len(self._cache_order) > self._max_cached:
+            evict = self._cache_order.pop(0)
+            self._cache.pop(evict, None)
+
+        return boosters
+
+    def get_horizon(self, horizon: int) -> dict[str, list[xgb.Booster]]:
+        """Return boosters for a specific horizon (loaded on demand)."""
+        return self._load_horizon(horizon)
+
+    def get_all_horizons(self) -> dict[int, dict[str, list[xgb.Booster]]]:
+        """Load all horizons (use sparingly — defeats lazy loading)."""
+        return {h: self._load_horizon(h) for h in self.available_horizons}
+
+    @property
+    def booster(self) -> xgb.Booster:
+        """Backward-compat shim: prefer h24, fall back to first available."""
+        h = 24 if 24 in self.available_horizons else self.available_horizons[0]
+        return self._load_horizon(h)["mean"][0]

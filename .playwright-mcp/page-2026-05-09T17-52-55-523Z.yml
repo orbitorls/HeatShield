@@ -1,0 +1,61 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "ข้ามไปเนื้อหาหลัก" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e4]:
+      - link "HeatShield AI — หน้าหลัก" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - text: HeatShield
+      - button "เลือกสถานี" [ref=e12]:
+        - img [ref=e13]
+        - text: สถานี
+        - img [ref=e16]
+    - main [ref=e18]:
+      - main [ref=e19]:
+        - link "← หน้าหลัก" [ref=e20] [cursor=pointer]:
+          - /url: /
+        - heading "Action Card" [level=1] [ref=e21]
+        - paragraph [ref=e22]: สร้างคำแนะนำเฉพาะกลุ่ม — พร้อมพิมพ์แจกจ่าย
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e25]:
+              - generic [ref=e26]: กลุ่มผู้รับ
+              - generic [ref=e27]:
+                - button "ครู/ผู้ดูแล" [ref=e28] [cursor=pointer]
+                - button "หัวหน้างาน" [ref=e29] [cursor=pointer]
+                - button "ผู้ปกครอง" [ref=e30] [cursor=pointer]
+                - button "ผู้ใช้แรงงาน" [ref=e31] [cursor=pointer]
+            - generic [ref=e32]:
+              - generic [ref=e33]: กลุ่มผู้ใช้
+              - combobox [ref=e34]:
+                - option "นักเรียนประถมศึกษา"
+                - option "นักเรียนมัธยมศึกษา"
+                - option "แรงงานกลางแจ้ง"
+                - option "แรงงานก่อสร้าง/เกษตร"
+                - option "ผู้สูงอายุ"
+                - option "ผู้ใหญ่ทั่วไป" [selected]
+            - generic [ref=e35]:
+              - generic [ref=e36]:
+                - generic [ref=e37]: อุณหภูมิ (°C)
+                - spinbutton [ref=e38]: "35"
+              - generic [ref=e39]:
+                - generic [ref=e40]: ความชื้น (%)
+                - spinbutton [ref=e41]: "70"
+            - generic [ref=e42]:
+              - generic [ref=e43]:
+                - generic [ref=e44]: ระยะเวลา
+                - generic [ref=e45]: 60 นาที
+              - slider [ref=e46]: "60"
+            - generic [ref=e47]:
+              - generic [ref=e48]:
+                - generic [ref=e49]: เวลาของวัน
+                - generic [ref=e50]: 13:00 น.
+              - slider [ref=e51]: "13"
+            - button "สร้าง Action Card" [ref=e52] [cursor=pointer]
+          - generic [ref=e53]: กรอกข้อมูลแล้วกด "สร้าง Action Card"
+    - contentinfo [ref=e54]:
+      - paragraph [ref=e55]: HeatShield AI — ข้อมูลจาก TMD · ERA5 · NASA POWER
+      - paragraph [ref=e56]: 5 สถานี · Thailand
+  - button "Open Next.js Dev Tools" [ref=e62] [cursor=pointer]:
+    - img [ref=e63]

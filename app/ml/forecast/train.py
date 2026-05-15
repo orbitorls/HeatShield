@@ -47,8 +47,8 @@ def _gpu_xgb_params() -> dict:
         info = xgb.build_info()
         if info.get("USE_CUDA"):
             return {"tree_method": "hist", "device": "cuda"}
-    except Exception:
-        pass
+    except (AttributeError, ImportError, RuntimeError) as exc:
+        logger.warning("Could not detect XGBoost CUDA support: %s", exc)
     return {"tree_method": "hist", "device": "cpu"}
 
 
@@ -75,7 +75,8 @@ def _git_sha() -> str:
             stderr=subprocess.DEVNULL,
             text=True,
         ).strip()
-    except Exception:
+    except (subprocess.SubprocessError, FileNotFoundError, OSError) as exc:
+        logger.debug("Could not get git SHA: %s", exc)
         return "unknown"
 
 
@@ -134,7 +135,7 @@ def _objective(trial: optuna.Trial, cv_folds: list[tuple[xgb.DMatrix, xgb.DMatri
         "objective": "reg:squarederror",
         "eval_metric": "mae",
         "max_depth": trial.suggest_int("max_depth", 3, 12),
-        "learning_rate": trial.suggest_float("learning_rate", 0.005, 0.3, log=True),
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.15, log=True),
         "subsample": trial.suggest_float("subsample", 0.5, 1.0),
         "colsample_bytree": trial.suggest_float("colsample_bytree", 0.5, 1.0),
         "colsample_bylevel": trial.suggest_float("colsample_bylevel", 0.5, 1.0),
@@ -155,7 +156,7 @@ def _objective(trial: optuna.Trial, cv_folds: list[tuple[xgb.DMatrix, xgb.DMatri
             num_boost_round=n_estimators,
             evals=[(dval, "val")],
             verbose_eval=False,
-            early_stopping_rounds=30,
+            early_stopping_rounds=20,
         )
         preds = bst.predict(dval)
         maes.append(mean_absolute_error(yv, preds))
@@ -171,7 +172,7 @@ def train(
     y: pd.Series,
     station_id: str,
     horizon_h: int,
-    n_trials: int = 100,
+    n_trials: int = 50,
     random_state: int = 42,
 ) -> dict:
     """Train XGBoost forecast model with TimeSeriesSplit CV and optuna tuning.
@@ -268,10 +269,10 @@ def train(
     bst_es = xgb.train(
         es_params,
         d_es_train,
-        num_boost_round=n_estimators,
+        num_boost_round=1000,
         evals=[(d_es_val, "val")],
         verbose_eval=False,
-        early_stopping_rounds=50,
+        early_stopping_rounds=30,
         evals_result=evals_result,
     )
     best_rounds = bst_es.best_iteration + 1

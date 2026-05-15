@@ -25,7 +25,7 @@ def write_observations(obs: list[StationObservation], station_id: str, day: date
     df = pd.DataFrame(records)
     path = _partition_path(station_id, day)
     path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(path, index=False, engine="pyarrow")
+    df.to_parquet(path, index=False, engine="pyarrow", compression="snappy")
     return path
 
 
@@ -54,6 +54,8 @@ def read_observations(
             return pd.DataFrame()
         df = table.to_pandas()
     except Exception:
+        # pyarrow dataset can fail with ArrowTypeError when parquet schemas differ
+        # (e.g. large_string vs string). Fallback to manual glob in all cases.
         frames: list[pd.DataFrame] = []
         station_dir = _RAW_ROOT / f"station_id={station_id}"
         if not station_dir.exists():

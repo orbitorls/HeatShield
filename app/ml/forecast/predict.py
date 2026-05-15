@@ -112,9 +112,11 @@ def predict(
     df["ts_utc"] = pd.to_datetime(df["ts_utc"], utc=True)
     df["station_id"] = station_id
 
-    # Stale data check
+    # Stale data check — ensure timezone-aware comparison
     now_utc = datetime.now(timezone.utc)
-    newest_ts = df["ts_utc"].max()
+    newest_ts = pd.to_datetime(df["ts_utc"].max())
+    if newest_ts.tzinfo is None:
+        newest_ts = newest_ts.replace(tzinfo=timezone.utc)
     staleness_min = (now_utc - newest_ts).total_seconds() / 60
     low_confidence = False
     confidence_reason: str | None = None
@@ -135,12 +137,12 @@ def predict(
             _forecaster = _reg.load_latest_v3(station_id, h)
             try:
                 _X_v3, _ = build_features(
-                    df.copy(),
+                    df,
                     horizon_h=h,
                     lags_h=_DEFAULT_LAGS_H,
                     rolling_h=_DEFAULT_ROLLING_H,
                 )
-            except Exception as exc:
+            except (ValueError, KeyError) as exc:
                 logger.warning("v3 forecaster failed for station=%s h=%d: %s", station_id, h, exc)
                 break
             if _X_v3.empty:

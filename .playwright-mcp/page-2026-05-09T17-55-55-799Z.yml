@@ -1,0 +1,119 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "ข้ามไปเนื้อหาหลัก" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e4]:
+      - link "HeatShield AI — หน้าหลัก" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - text: HeatShield
+      - button "เลือกสถานี" [ref=e12]:
+        - img [ref=e13]
+        - text: สถานี
+        - img [ref=e16]
+    - main [ref=e18]:
+      - generic [ref=e19]:
+        - region "ระบบเฝ้าระวังความร้อน" [ref=e20]:
+          - paragraph [ref=e21]: Thailand Heat-Health Risk · 5 TMD Stations
+          - heading "ระบบเฝ้าระวังความร้อน" [level=1] [ref=e22]:
+            - text: ระบบเฝ้าระวัง
+            - text: ความร้อน
+          - paragraph [ref=e23]: เช็คความเสี่ยงด้านสุขภาพจากความร้อน คาดการณ์ล่วงหน้า 6–72 ชั่วโมง สำหรับโรงเรียนและแรงงานกลางแจ้งทั่วไทย
+        - region [ref=e24]:
+          - generic [ref=e26]:
+            - paragraph [ref=e27]: เครื่องมือ
+            - heading "วิเคราะห์และวางแผน" [level=2] [ref=e28]
+          - generic [ref=e29]:
+            - link "เช็คความเสี่ยง ป้อนอุณหภูมิ ความชื้น กลุ่มผู้ใช้ รับคะแนนความเสี่ยงทันที เปิดใช้งาน" [ref=e30] [cursor=pointer]:
+              - /url: /tools/risk
+              - generic [ref=e31]:
+                - img [ref=e33]
+                - generic [ref=e36]: เช็คความเสี่ยง
+                - generic [ref=e37]: ป้อนอุณหภูมิ ความชื้น กลุ่มผู้ใช้ รับคะแนนความเสี่ยงทันที
+                - generic [ref=e38]:
+                  - text: เปิดใช้งาน
+                  - img [ref=e39]
+            - link "ตรวจจับ Heatwave วิเคราะห์คลื่นร้อนจากข้อมูลอุณหภูมิรายวันหลายปี เปิดใช้งาน" [ref=e41] [cursor=pointer]:
+              - /url: /tools/events
+              - generic [ref=e42]:
+                - img [ref=e44]
+                - generic [ref=e47]: ตรวจจับ Heatwave
+                - generic [ref=e48]: วิเคราะห์คลื่นร้อนจากข้อมูลอุณหภูมิรายวันหลายปี
+                - generic [ref=e49]:
+                  - text: เปิดใช้งาน
+                  - img [ref=e50]
+            - link "จำลองมาตรการ เปรียบเทียบผลของร่มเงา น้ำดื่ม หรือการปรับเวลาทำงาน เปิดใช้งาน" [ref=e52] [cursor=pointer]:
+              - /url: /tools/whatif
+              - generic [ref=e53]:
+                - img [ref=e55]
+                - generic [ref=e57]: จำลองมาตรการ
+                - generic [ref=e58]: เปรียบเทียบผลของร่มเงา น้ำดื่ม หรือการปรับเวลาทำงาน
+                - generic [ref=e59]:
+                  - text: เปิดใช้งาน
+                  - img [ref=e60]
+            - link "Action Card สร้างบัตรคำแนะนำสำหรับครู หัวหน้างาน ผู้ปกครอง พร้อมพิมพ์ เปิดใช้งาน" [ref=e62] [cursor=pointer]:
+              - /url: /tools/action-card
+              - generic [ref=e63]:
+                - img [ref=e65]
+                - generic [ref=e68]: Action Card
+                - generic [ref=e69]: สร้างบัตรคำแนะนำสำหรับครู หัวหน้างาน ผู้ปกครอง พร้อมพิมพ์
+                - generic [ref=e70]:
+                  - text: เปิดใช้งาน
+                  - img [ref=e71]
+        - region [ref=e73]:
+          - generic [ref=e75]:
+            - paragraph [ref=e76]: Live Data
+            - heading "สถานีตรวจวัดอากาศ" [level=2] [ref=e77]
+            - paragraph [ref=e78]: อัพเดททุก 60 วินาที — คลิกสถานีเพื่อดูรายละเอียดและการพยากรณ์
+          - region "5 สถานีตรวจวัดอากาศ" [ref=e79]:
+            - generic [ref=e80]:
+              - link "ดูข้อมูลสถานี กรุงเทพมหานคร (Don Mueang)" [ref=e81] [cursor=pointer]:
+                - /url: /station/BKK_01
+                - article [ref=e82]:
+                  - generic [ref=e84]:
+                    - paragraph [ref=e85]: BKK_01
+                    - heading "กรุงเทพมหานคร (Don Mueang)" [level=3] [ref=e86]
+                  - generic [ref=e91]:
+                    - text: ดูข้อมูล
+                    - img [ref=e92]
+              - link "ดูข้อมูลสถานี เชียงใหม่" [ref=e94] [cursor=pointer]:
+                - /url: /station/CNX_01
+                - article [ref=e95]:
+                  - generic [ref=e97]:
+                    - paragraph [ref=e98]: CNX_01
+                    - heading "เชียงใหม่" [level=3] [ref=e99]
+                  - generic [ref=e104]:
+                    - text: ดูข้อมูล
+                    - img [ref=e105]
+              - link "ดูข้อมูลสถานี ขอนแก่น" [ref=e107] [cursor=pointer]:
+                - /url: /station/KKN_01
+                - article [ref=e108]:
+                  - generic [ref=e110]:
+                    - paragraph [ref=e111]: KKN_01
+                    - heading "ขอนแก่น" [level=3] [ref=e112]
+                  - generic [ref=e117]:
+                    - text: ดูข้อมูล
+                    - img [ref=e118]
+              - link "ดูข้อมูลสถานี หาดใหญ่ (สงขลา)" [ref=e120] [cursor=pointer]:
+                - /url: /station/HYI_01
+                - article [ref=e121]:
+                  - generic [ref=e123]:
+                    - paragraph [ref=e124]: HYI_01
+                    - heading "หาดใหญ่ (สงขลา)" [level=3] [ref=e125]
+                  - generic [ref=e130]:
+                    - text: ดูข้อมูล
+                    - img [ref=e131]
+              - link "ดูข้อมูลสถานี ระยอง" [ref=e133] [cursor=pointer]:
+                - /url: /station/RYG_01
+                - article [ref=e134]:
+                  - generic [ref=e136]:
+                    - paragraph [ref=e137]: RYG_01
+                    - heading "ระยอง" [level=3] [ref=e138]
+                  - generic [ref=e143]:
+                    - text: ดูข้อมูล
+                    - img [ref=e144]
+    - contentinfo [ref=e146]:
+      - paragraph [ref=e147]: HeatShield AI — ข้อมูลจาก TMD · ERA5 · NASA POWER
+      - paragraph [ref=e148]: 5 สถานี · Thailand
+  - button "Open Next.js Dev Tools" [ref=e154] [cursor=pointer]:
+    - img [ref=e155]

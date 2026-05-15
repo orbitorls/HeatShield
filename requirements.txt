@@ -23,4 +23,5 @@ xarray>=2024.1.0
 netCDF4>=1.7.0
 imbalanced-learn>=0.13
 joblib>=1.4
+fpdf2>=2.8.0
 # NASA POWER / MODIS — NASA POWER uses httpx (already listed); APPEEARS needs no extra deps

@@ -18,3 +18,6 @@ artifacts/
 app/models/forecast_v*.json
 app/models/forecast_v*.ubj
 logs/
+data/era5_cache/
+frontend/dist/
+models/

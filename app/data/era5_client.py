@@ -136,11 +136,15 @@ class ERA5Client:
         client = cdsapi.Client(url=self.api_url, key=self.api_key, quiet=True)
         logger.info("Downloading ERA5 for %s from CDS (may take 1-5 min)…", day)
 
+        import os as _os
+
         def _fetch_vars(variables: list, suffix: str) -> Path:
             tmp = self.cache_dir / f"era5_{day.strftime('%Y%m%d')}_{suffix}.tmp"
             out = self.cache_dir / f"era5_{day.strftime('%Y%m%d')}_{suffix}.nc"
             if out.exists():
                 return out
+            # Remove stale .tmp from a previous interrupted run before downloading.
+            tmp.unlink(missing_ok=True)
             client.retrieve(
                 "reanalysis-era5-single-levels",
                 {
@@ -156,15 +160,17 @@ class ERA5Client:
                 str(tmp),
             )
             if zipfile.is_zipfile(tmp):
+                extracted = self.cache_dir / f"era5_{day.strftime('%Y%m%d')}_{suffix}.extracted"
                 with zipfile.ZipFile(tmp) as zf:
                     nc_names = [n for n in zf.namelist() if n.endswith(".nc")]
                     if not nc_names:
                         raise RuntimeError(f"No .nc in CDS ZIP: {zf.namelist()}")
-                    with zf.open(nc_names[0]) as src, open(out, "wb") as dst:
+                    with zf.open(nc_names[0]) as src, open(str(extracted), "wb") as dst:
                         dst.write(src.read())
-                tmp.unlink()
+                tmp.unlink(missing_ok=True)
+                _os.replace(str(extracted), str(out))
             else:
-                tmp.rename(out)
+                _os.replace(str(tmp), str(out))
             return out
 
         # CDS v2 requires separate requests for instantaneous vs accumulated vars
@@ -183,12 +189,356 @@ class ERA5Client:
             accum_path.unlink(missing_ok=True)
         except Exception as exc:
             logger.warning("Accumulated vars fetch failed (%s) — proceeding with instantaneous only", exc)
+            if not instant_path.exists():
+                raise
             import shutil
             shutil.copy(str(instant_path), str(nc_path))
             instant_path.unlink(missing_ok=True)
 
         logger.info("Downloaded → %s (%.1f MB)", nc_path, nc_path.stat().st_size / 1e6)
         return nc_path
+
+    def download_chunk_batch(
+        self,
+        year: int,
+        months: list[int],
+        missing_days: list[date],
+    ) -> list[Path]:
+        """Download ERA5 for a multi-month chunk (e.g. one quarter) in two CDS requests.
+
+        Requesting 3 months at a time cuts CDS calls by 3× vs monthly.
+        CDS cost limit: monthly (1 month) is ~5k fields — quarterly (~3 months) is ~15k,
+        which stays within the CDS v2 per-request cost limit (yearly fails at ~60k).
+
+        Returns list of per-day NC paths created or already cached.
+        """
+        import cdsapi
+        import numpy as np
+        import os as _os
+        import zipfile
+
+        import xarray as xr
+
+        days_to_fetch = [d for d in missing_days
+                         if not (self.cache_dir / f"era5_{d.strftime('%Y%m%d')}.nc").exists()]
+        existing = [self.cache_dir / f"era5_{d.strftime('%Y%m%d')}.nc"
+                    for d in missing_days if d not in days_to_fetch]
+
+        if not days_to_fetch:
+            logger.debug("ERA5 chunk %d-%s: all days cached", year, months)
+            return existing
+
+        month_strs = [f"{m:02d}" for m in sorted(months)]
+        all_day_strs = [f"{d:02d}" for d in range(1, 32)]
+        prefix = f"era5_{year:04d}_m{'_'.join(month_strs)}"
+        logger.info("ERA5 chunk batch %d months=%s: %d missing days", year, month_strs, len(days_to_fetch))
+
+        api_url, api_key = self.api_url, self.api_key
+
+        def _fetch_chunk(variables: list, suffix: str) -> Path:
+            tmp = self.cache_dir / f"{prefix}_{suffix}.tmp"
+            out = self.cache_dir / f"{prefix}_{suffix}.nc"
+            if out.exists():
+                return out
+            tmp.unlink(missing_ok=True)
+            _client = cdsapi.Client(url=api_url, key=api_key, quiet=True)
+            _client.retrieve(
+                "reanalysis-era5-single-levels",
+                {
+                    "product_type": "reanalysis",
+                    "variable": variables,
+                    "year": str(year),
+                    "month": month_strs,
+                    "day": all_day_strs,
+                    "time": [f"{h:02d}:00" for h in range(24)],
+                    "area": _THAILAND_AREA,
+                    "format": "netcdf",
+                },
+                str(tmp),
+            )
+            if zipfile.is_zipfile(tmp):
+                extracted = self.cache_dir / f"{prefix}_{suffix}.extracted"
+                with zipfile.ZipFile(tmp) as zf:
+                    nc_names = [n for n in zf.namelist() if n.endswith(".nc")]
+                    if not nc_names:
+                        raise RuntimeError(f"No .nc in CDS ZIP: {zf.namelist()}")
+                    with zf.open(nc_names[0]) as src, open(str(extracted), "wb") as dst:
+                        dst.write(src.read())
+                tmp.unlink(missing_ok=True)
+                _os.replace(str(extracted), str(out))
+            else:
+                _os.replace(str(tmp), str(out))
+            logger.info("Chunk %d %s %s: %.1f MB downloaded", year, month_strs, suffix,
+                        Path(out).stat().st_size / 1e6)
+            return out
+
+        # Submit instant and accum CDS requests in parallel to halve queue wait time.
+        from concurrent.futures import ThreadPoolExecutor as _ChunkTPE
+        with _ChunkTPE(max_workers=2) as _exe:
+            _fut_i = _exe.submit(_fetch_chunk, _ERA5_INSTANT_VARS, "instant")
+            _fut_a = _exe.submit(_fetch_chunk, _ERA5_ACCUM_VARS, "accum")
+            instant_path = _fut_i.result()
+            accum_path = None
+            try:
+                accum_path = _fut_a.result()
+            except Exception as exc:
+                logger.warning("Accum chunk fetch failed (%s) — instantaneous only", exc)
+
+        try:
+            if accum_path is not None:
+                ds_i = xr.open_dataset(str(instant_path))
+                ds_a = xr.open_dataset(str(accum_path))
+                merged = xr.merge([ds_i, ds_a]).load()
+                ds_i.close()
+                ds_a.close()
+            else:
+                merged = xr.open_dataset(str(instant_path)).load()
+        except Exception as exc:
+            logger.warning("Merge/load failed (%s) — instant only", exc)
+            merged = xr.open_dataset(str(instant_path)).load()
+            accum_path = None
+
+        time_dim = "valid_time" if "valid_time" in merged.dims else "time"
+        times = pd.DatetimeIndex(merged[time_dim].values)
+        created: list[Path] = list(existing)
+
+        for d in days_to_fetch:
+            nc_path = self.cache_dir / f"era5_{d.strftime('%Y%m%d')}.nc"
+            mask = (times.year == d.year) & (times.month == d.month) & (times.day == d.day)
+            indices = np.where(mask)[0]
+            if len(indices) == 0:
+                logger.warning("No data for %s in chunk batch", d)
+                continue
+            day_ds = merged.isel({time_dim: list(indices)})
+            day_ds.to_netcdf(str(nc_path))
+            created.append(nc_path)
+
+        merged.close()
+        for _batch in (instant_path, accum_path):
+            if _batch is not None:
+                try:
+                    _batch.unlink(missing_ok=True)
+                except OSError:
+                    pass  # Windows: brief file-handle retention after close
+
+        logger.info("Chunk %d %s done: %d days written", year, month_strs,
+                    len(created) - len(existing))
+        return created
+
+    def download_month_batch(
+        self,
+        year: int,
+        month: int,
+        days: list[int],
+    ) -> list[Path]:
+        """Download ERA5 for multiple days in one CDS request, split into per-day NC files.
+
+        Returns list of per-day NC paths that were created or already existed.
+        """
+        import cdsapi
+        import numpy as np
+        import os as _os
+        import zipfile
+
+        import xarray as xr
+
+        days_to_fetch = [d for d in days
+                         if not (self.cache_dir / f"era5_{year:04d}{month:02d}{d:02d}.nc").exists()]
+        existing = [self.cache_dir / f"era5_{year:04d}{month:02d}{d:02d}.nc"
+                    for d in days if d not in days_to_fetch]
+
+        if not days_to_fetch:
+            logger.debug("ERA5 month batch %d-%02d: all %d days cached", year, month, len(days))
+            return existing
+
+        client = cdsapi.Client(url=self.api_url, key=self.api_key, quiet=True)
+        day_strs = [f"{d:02d}" for d in days_to_fetch]
+        prefix = f"era5_{year:04d}{month:02d}_batch"
+        logger.info("ERA5 batch download: %d-%02d days=%s", year, month, day_strs)
+
+        def _fetch_batch(variables: list, suffix: str) -> Path:
+            tmp = self.cache_dir / f"{prefix}_{suffix}.tmp"
+            out = self.cache_dir / f"{prefix}_{suffix}.nc"
+            if out.exists():
+                return out
+            tmp.unlink(missing_ok=True)
+            client.retrieve(
+                "reanalysis-era5-single-levels",
+                {
+                    "product_type": "reanalysis",
+                    "variable": variables,
+                    "year": str(year),
+                    "month": f"{month:02d}",
+                    "day": day_strs,
+                    "time": [f"{h:02d}:00" for h in range(24)],
+                    "area": _THAILAND_AREA,
+                    "format": "netcdf",
+                },
+                str(tmp),
+            )
+            if zipfile.is_zipfile(tmp):
+                extracted = self.cache_dir / f"{prefix}_{suffix}.extracted"
+                with zipfile.ZipFile(tmp) as zf:
+                    nc_names = [n for n in zf.namelist() if n.endswith(".nc")]
+                    if not nc_names:
+                        raise RuntimeError(f"No .nc in CDS ZIP: {zf.namelist()}")
+                    with zf.open(nc_names[0]) as src, open(str(extracted), "wb") as dst:
+                        dst.write(src.read())
+                tmp.unlink(missing_ok=True)
+                _os.replace(str(extracted), str(out))
+            else:
+                _os.replace(str(tmp), str(out))
+            return out
+
+        instant_path = _fetch_batch(_ERA5_INSTANT_VARS, "instant")
+        accum_path = None
+        try:
+            accum_path = _fetch_batch(_ERA5_ACCUM_VARS, "accum")
+            ds_i = xr.open_dataset(str(instant_path))
+            ds_a = xr.open_dataset(str(accum_path))
+            merged = xr.merge([ds_i, ds_a])
+            ds_i.close()
+            ds_a.close()
+        except Exception as exc:
+            logger.warning("Accum batch fetch failed (%s) — instantaneous only", exc)
+            merged = xr.open_dataset(str(instant_path))
+
+        # Split monthly dataset into per-day NC files
+        time_dim = "valid_time" if "valid_time" in merged.dims else "time"
+        times = pd.DatetimeIndex(merged[time_dim].values)
+        created: list[Path] = list(existing)
+
+        for d in days_to_fetch:
+            nc_path = self.cache_dir / f"era5_{year:04d}{month:02d}{d:02d}.nc"
+            mask = (times.year == year) & (times.month == month) & (times.day == d)
+            indices = np.where(mask)[0]
+            if len(indices) == 0:
+                logger.warning("No data for %d-%02d-%02d in batch", year, month, d)
+                continue
+            day_ds = merged.isel({time_dim: list(indices)})
+            day_ds.to_netcdf(str(nc_path))
+            created.append(nc_path)
+            logger.debug("Split %d-%02d-%02d → %s", year, month, d, nc_path.name)
+
+        merged.close()
+        instant_path.unlink(missing_ok=True)
+        if accum_path:
+            accum_path.unlink(missing_ok=True)
+
+        logger.info("Batch %d-%02d done: %d/%d days written",
+                    year, month, len(created) - len(existing), len(days_to_fetch))
+        return created
+
+    def download_year_batch(
+        self,
+        year: int,
+        missing_days: list[date],
+    ) -> list[Path]:
+        """Download ERA5 for an entire year in two CDS requests (instant + accum).
+
+        One CDS call per variable group per year instead of one per month — ~10x fewer
+        requests, reducing wall time from ~3h to ~20-30 min for a 4-year backfill.
+
+        Returns list of per-day NC paths created (already-cached days skipped).
+        """
+        import cdsapi
+        import numpy as np
+        import os as _os
+        import zipfile
+
+        import xarray as xr
+
+        days_to_fetch = [d for d in missing_days
+                         if not (self.cache_dir / f"era5_{d.strftime('%Y%m%d')}.nc").exists()]
+        existing = [self.cache_dir / f"era5_{d.strftime('%Y%m%d')}.nc"
+                    for d in missing_days if d not in days_to_fetch]
+
+        if not days_to_fetch:
+            logger.debug("ERA5 year batch %d: all %d days cached", year, len(missing_days))
+            return existing
+
+        # Collect unique months that have missing days
+        months = sorted({d.month for d in days_to_fetch})
+        month_strs = [f"{m:02d}" for m in months]
+        # Request all 31 possible days — CDS drops days that don't exist in the month
+        all_day_strs = [f"{d:02d}" for d in range(1, 32)]
+
+        client = cdsapi.Client(url=self.api_url, key=self.api_key, quiet=True)
+        prefix = f"era5_{year:04d}_year"
+        logger.info("ERA5 year batch %d: %d months, %d missing days", year, len(months), len(days_to_fetch))
+
+        def _fetch_year(variables: list, suffix: str) -> Path:
+            tmp = self.cache_dir / f"{prefix}_{suffix}.tmp"
+            out = self.cache_dir / f"{prefix}_{suffix}.nc"
+            if out.exists():
+                return out
+            tmp.unlink(missing_ok=True)
+            client.retrieve(
+                "reanalysis-era5-single-levels",
+                {
+                    "product_type": "reanalysis",
+                    "variable": variables,
+                    "year": str(year),
+                    "month": month_strs,
+                    "day": all_day_strs,
+                    "time": [f"{h:02d}:00" for h in range(24)],
+                    "area": _THAILAND_AREA,
+                    "format": "netcdf",
+                },
+                str(tmp),
+            )
+            if zipfile.is_zipfile(tmp):
+                extracted = self.cache_dir / f"{prefix}_{suffix}.extracted"
+                with zipfile.ZipFile(tmp) as zf:
+                    nc_names = [n for n in zf.namelist() if n.endswith(".nc")]
+                    if not nc_names:
+                        raise RuntimeError(f"No .nc in CDS ZIP: {zf.namelist()}")
+                    with zf.open(nc_names[0]) as src, open(str(extracted), "wb") as dst:
+                        dst.write(src.read())
+                tmp.unlink(missing_ok=True)
+                _os.replace(str(extracted), str(out))
+            else:
+                _os.replace(str(tmp), str(out))
+            logger.info("ERA5 year %d %s downloaded: %.1f MB", year, suffix,
+                        Path(out).stat().st_size / 1e6)
+            return out
+
+        instant_path = _fetch_year(_ERA5_INSTANT_VARS, "instant")
+        accum_path = None
+        try:
+            accum_path = _fetch_year(_ERA5_ACCUM_VARS, "accum")
+            ds_i = xr.open_dataset(str(instant_path))
+            ds_a = xr.open_dataset(str(accum_path))
+            merged = xr.merge([ds_i, ds_a])
+            ds_i.close()
+            ds_a.close()
+        except Exception as exc:
+            logger.warning("Accum year fetch failed (%s) — instantaneous only", exc)
+            merged = xr.open_dataset(str(instant_path))
+
+        time_dim = "valid_time" if "valid_time" in merged.dims else "time"
+        times = pd.DatetimeIndex(merged[time_dim].values)
+        created: list[Path] = list(existing)
+
+        for d in days_to_fetch:
+            nc_path = self.cache_dir / f"era5_{d.strftime('%Y%m%d')}.nc"
+            mask = (times.year == d.year) & (times.month == d.month) & (times.day == d.day)
+            indices = np.where(mask)[0]
+            if len(indices) == 0:
+                logger.warning("No data for %s in year batch %d", d, year)
+                continue
+            day_ds = merged.isel({time_dim: list(indices)})
+            day_ds.to_netcdf(str(nc_path))
+            created.append(nc_path)
+
+        merged.close()
+        instant_path.unlink(missing_ok=True)
+        if accum_path:
+            accum_path.unlink(missing_ok=True)
+
+        logger.info("Year batch %d done: %d/%d days written",
+                    year, len(created) - len(existing), len(days_to_fetch))
+        return created
 
     def _extract_station(
         self,

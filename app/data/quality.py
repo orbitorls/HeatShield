@@ -28,8 +28,8 @@ def validate_observation(obs: StationObservation) -> tuple[bool, list[str]]:
         dewpoint = _dewpoint(obs.temp_c, obs.rh)
         if dewpoint > obs.temp_c + 0.5:
             reasons.append(f"dewpoint {dewpoint:.1f}°C > temp {obs.temp_c}°C")
-    except Exception:
-        pass
+    except (ValueError, TypeError) as exc:
+        reasons.append(f"Invalid dewpoint calculation: {exc}")
 
     return len(reasons) == 0, reasons
 

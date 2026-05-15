@@ -9,7 +9,7 @@ set -euo pipefail
 REPO_DIR="${REPO_DIR:-/content/Heat-wave-backend}"
 START_DATE="${START_DATE:-2021-01-01}"
 END_DATE="${END_DATE:-$(date -u +%Y-%m-%d)}"
-TRIALS="${TRIALS:-120}"
+TRIALS="${TRIALS:-50}"
 DEVICE="${DEVICE:-gpu}"
 GATE_BACKEND="${GATE_BACKEND:-brf}"
 MIN_ROWS="${MIN_ROWS:-500}"

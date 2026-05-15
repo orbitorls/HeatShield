@@ -6,6 +6,8 @@ import time
 from pathlib import Path
 from typing import Mapping
 
+import matplotlib
+matplotlib.use("Agg")  # non-interactive backend: no popup windows
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -16,6 +18,8 @@ from sklearn.metrics import (
     mean_absolute_error,
     mean_squared_error,
 )
+
+from app.ml.report import generate_pdf_report
 
 _CATEGORY_LABELS = ["Caution", "Extreme Caution", "Danger", "Extreme Danger"]
 
@@ -61,12 +65,16 @@ def _station_names(X: pd.DataFrame, labels: Mapping[int, str] | None) -> pd.Seri
     return codes.map(lambda c: f"station_{int(c)}")
 
 
-def _baseline_metrics(y_true: np.ndarray, X: pd.DataFrame) -> dict:
+def _baseline_metrics(y_true: np.ndarray, X: pd.DataFrame, horizon_h: int = 1) -> dict:
     if "heat_index_c_lag1h" in X.columns:
         persistence = X["heat_index_c_lag1h"].to_numpy(dtype=float)
     else:
-        persistence = np.roll(y_true, 1)
-        persistence[0] = y_true[0]
+        # When lag-1h is absent (e.g. h48/h72 lag-restricted feature sets), shift by
+        # horizon_h rows so persistence[i] = y_true[i - horizon_h] = HI(t_i), the
+        # true same-time value h steps earlier — a fair "copy current value forward" baseline.
+        shift = min(horizon_h, len(y_true) - 1)
+        persistence = np.roll(y_true, shift)
+        persistence[:shift] = persistence[shift]
     persistence_mae = float(mean_absolute_error(y_true, persistence))
 
     if {"station_enc", "month", "hour_sin", "hour_cos"} <= set(X.columns):
@@ -76,9 +84,21 @@ def _baseline_metrics(y_true: np.ndarray, X: pd.DataFrame) -> dict:
             "month": X["month"].astype(int).to_numpy(),
             "hour": _hours_from_features(X, len(y_true)),
         })
-        climatology = frame.groupby(["station", "month", "hour"])["y"].transform("mean").to_numpy()
+        # Causal expanding mean: for each row, use only past values in same bucket
+        # Sort by index to ensure temporal order
+        frame_sorted = frame.reset_index(drop=True)
+        # Compute expanding mean within each (station, month, hour) group
+        climatology = (
+            frame_sorted.groupby(["station", "month", "hour"])["y"]
+            .expanding(min_periods=1)
+            .mean()
+            .reset_index(level=[0, 1, 2], drop=True)
+            .reindex(frame_sorted.index)
+            .to_numpy()
+        )
     else:
-        climatology = np.full_like(y_true, float(np.mean(y_true)), dtype=float)
+        # Causal expanding mean for simple case (no grouping)
+        climatology = np.array(pd.Series(y_true).expanding(min_periods=1).mean())
     climatology_mae = float(mean_absolute_error(y_true, climatology))
 
     return {
@@ -102,7 +122,7 @@ def compute_metrics(
     y_pred = np.asarray(y_pred, dtype=float)
     residual = y_pred - y_true
     abs_err = np.abs(residual)
-    baselines = _baseline_metrics(y_true, X)
+    baselines = _baseline_metrics(y_true, X, horizon_h=horizon_h)
     best_baseline = min(baselines["persistence_mae"], baselines["climatology_mae"])
 
     true_cat = categorize_heat_index(y_true)
@@ -143,10 +163,19 @@ def compute_metrics(
             "pinball_q95": float(np.mean(np.maximum(0.95 * (y_true - q95), (0.95 - 1) * (y_true - q95)))),
         }
 
+    # Calculate skill score with proper handling for edge cases
+    model_mae = mean_absolute_error(y_true, y_pred)
+    # If baseline is extremely small or zero, skill score is not meaningful
+    # Use a minimum threshold of 0.1°C to avoid division by near-zero
+    effective_baseline = max(best_baseline, 0.1)
+    skill_score = float(1.0 - model_mae / effective_baseline)
+    # Clamp skill score to reasonable range [-1, 1] for sanity
+    skill_score = max(-1.0, min(1.0, skill_score))
+
     return {
         "horizon_h": horizon_h,
         "regression": {
-            "mae": float(mean_absolute_error(y_true, y_pred)),
+            "mae": float(model_mae),
             "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
             "bias": float(np.mean(residual)),
             "correlation": float(np.corrcoef(y_true, y_pred)[0, 1]) if len(y_true) > 1 else float("nan"),
@@ -156,7 +185,7 @@ def compute_metrics(
         },
         "baselines": {
             **baselines,
-            "skill_score": float(1.0 - mean_absolute_error(y_true, y_pred) / max(best_baseline, 1e-6)),
+            "skill_score": skill_score,
         },
         "risk": {
             "labels": _CATEGORY_LABELS,
@@ -177,143 +206,6 @@ def compute_metrics(
     }
 
 
-def _save_confusion(metrics: dict, out_dir: Path, *, dpi: int = 80) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(8, 5))
-    sns.heatmap(metrics["risk"]["confusion_matrix"], annot=True, fmt="d", cmap="Blues",
-                xticklabels=_CATEGORY_LABELS, yticklabels=_CATEGORY_LABELS, ax=axes[0])
-    axes[0].set_title("Risk Category Counts")
-    axes[0].set_xlabel("Predicted")
-    axes[0].set_ylabel("Actual")
-    sns.heatmap(metrics["risk"]["confusion_matrix_normalized"], annot=True, fmt=".2f", cmap="Blues",
-                xticklabels=_CATEGORY_LABELS, yticklabels=_CATEGORY_LABELS, ax=axes[1])
-    axes[1].set_title("Risk Category Recall")
-    axes[1].set_xlabel("Predicted")
-    axes[1].set_ylabel("Actual")
-    fig.tight_layout()
-    fig.savefig(out_dir / "confusion_matrix.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-
-def _save_classification(
-    metrics: dict, out_dir: Path, horizon_h: int = 24, station: str = "", *, dpi: int = 80
-) -> None:
-    report = metrics["risk"]["classification_report"]
-    rows = [report[label] for label in _CATEGORY_LABELS]
-    x = np.arange(len(_CATEGORY_LABELS))
-    fig, ax = plt.subplots(figsize=(10, 5))
-    for offset, key in [(-0.25, "precision"), (0.0, "recall"), (0.25, "f1-score")]:
-        ax.bar(x + offset, [r[key] for r in rows], width=0.25, label=key)
-    ax.set_xticks(x)
-    ax.set_xticklabels(_CATEGORY_LABELS, rotation=15, ha="right")
-    ax.set_ylim(0, 1.05)
-    ax.set_xlabel("Risk Category")
-    ax.set_ylabel("Score")
-    ax.set_title(f"Classification Report | h{horizon_h} | {station}")
-    ax.legend()
-    fig.tight_layout()
-    fig.savefig(out_dir / "classification_report.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-
-def _save_error_plots(
-    y_true: np.ndarray,
-    y_pred: np.ndarray,
-    X: pd.DataFrame,
-    out_dir: Path,
-    station_labels: Mapping[int, str] | None,
-    horizon_h: int = 24,
-    station: str = "",
-    *,
-    dpi: int = 80,
-) -> None:
-    residual = y_pred - y_true
-    abs_err = np.abs(residual)
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    axes[0].scatter(y_true, y_pred, s=12, alpha=0.55)
-    lo = float(min(y_true.min(), y_pred.min()))
-    hi = float(max(y_true.max(), y_pred.max()))
-    axes[0].plot([lo, hi], [lo, hi], "k--", linewidth=1)
-    axes[0].set_xlabel("Actual HI (°C)")
-    axes[0].set_ylabel("Predicted HI (°C)")
-    axes[0].set_title(f"Predicted vs Actual | h{horizon_h} | {station}")
-    axes[1].hist(residual, bins=min(40, max(5, len(y_true) // 2)))
-    axes[1].axvline(0, color="black", linestyle="--")
-    axes[1].set_xlabel("Prediction Error (°C)")
-    axes[1].set_ylabel("Count")
-    axes[1].set_title(f"Error Distribution | h{horizon_h} | {station}")
-    fig.tight_layout()
-    fig.savefig(out_dir / "pred_vs_actual.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-    hours = _hours_from_features(X, len(y_true))
-    by_hour = pd.DataFrame({"hour": hours, "abs_err": abs_err, "err": residual}).groupby("hour").mean()
-    fig, ax = plt.subplots(figsize=(10, 4))
-    by_hour["abs_err"].reindex(range(24), fill_value=0).plot(kind="bar", ax=ax)
-    ax.set_xlabel("Hour of Day")
-    ax.set_ylabel("Mean Absolute Error (°C)")
-    ax.set_title(f"Error by Hour | h{horizon_h} | {station}")
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=0)
-    fig.tight_layout()
-    fig.savefig(out_dir / "error_by_hour.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-    stations = _station_names(X, station_labels)
-    by_station = pd.DataFrame({"station": stations, "abs_err": abs_err}).groupby("station").mean()
-    fig, ax = plt.subplots(figsize=(8, 4))
-    by_station["abs_err"].plot(kind="bar", ax=ax)
-    ax.set_xlabel("Station")
-    ax.set_ylabel("Mean Absolute Error (°C)")
-    ax.set_title(f"Error by Station | h{horizon_h} | {station}")
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=15, ha="right")
-    fig.tight_layout()
-    fig.savefig(out_dir / "error_by_station.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-    heat = pd.DataFrame({"station": stations, "hour": hours, "abs_err": abs_err})
-    pivot = heat.pivot_table(index="station", columns="hour", values="abs_err", aggfunc="mean")
-    fig, ax = plt.subplots(figsize=(12, max(3, int(0.8 * len(pivot)))))
-    sns.heatmap(pivot, cmap="YlOrRd", ax=ax)
-    ax.set_xlabel("Hour of Day")
-    ax.set_ylabel("Station")
-    ax.set_title(f"Error Heatmap | h{horizon_h} | {station}")
-    fig.tight_layout()
-    fig.savefig(out_dir / "error_heatmap.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-
-def _save_pi_plots(
-    y_true: np.ndarray,
-    q05: np.ndarray | None,
-    q95: np.ndarray | None,
-    out_dir: Path,
-    horizon_h: int = 24,
-    station: str = "",
-    *,
-    dpi: int = 80,
-) -> None:
-    if q05 is None or q95 is None:
-        return
-    coverage = ((y_true >= q05) & (y_true <= q95)).astype(int)
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(["Outside PI", "Inside PI"], [(coverage == 0).mean(), coverage.mean()])
-    ax.set_ylim(0, 1)
-    ax.set_ylabel("Share of Predictions")
-    ax.set_xlabel("Prediction Interval Coverage")
-    ax.set_title(f"PI Calibration | h{horizon_h} | {station}")
-    fig.tight_layout()
-    fig.savefig(out_dir / "pi_calibration.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-    fig, ax = plt.subplots(figsize=(7, 4))
-    ax.hist(q95 - q05, bins=min(40, max(5, len(y_true) // 2)))
-    ax.set_xlabel("Prediction Interval Width (q95 - q05, °C)")
-    ax.set_ylabel("Count")
-    ax.set_title(f"PI Width Distribution | h{horizon_h} | {station}")
-    fig.tight_layout()
-    fig.savefig(out_dir / "pi_width.png", dpi=dpi, bbox_inches="tight")
-    plt.close(fig)
-
-
 def _write_summary(metrics: dict, out_dir: Path) -> None:
     reg = metrics["regression"]
     base = metrics["baselines"]
@@ -326,6 +218,7 @@ def _write_summary(metrics: dict, out_dir: Path) -> None:
         f"- RMSE: {reg['rmse']:.3f}",
         f"- Skill score: {base['skill_score']:.3f}",
         f"- Danger recall >=42C: {metrics['safety']['danger_42']['recall']}",
+        f"- Danger recall >=40C: {metrics['safety']['danger_40']['recall']}",
         f"- PI available: {pi['available']}",
     ]
     if pi.get("available"):
@@ -346,9 +239,19 @@ def evaluate_predictions(
     runtime: dict | None = None,
     split_metadata: dict | None = None,
     station: str = "",
+    backend: str = "",
+    hyperparams: dict | None = None,
+    feature_importance: dict[str, float] | None = None,
+    model_version: str = "v3",
+    run_id: str = "",
     eval_dpi: int = 80,
+    skip_pdf: bool = False,
 ) -> dict:
-    """Compute metrics and write standard evaluation artifacts."""
+    """Compute metrics and write standard evaluation artifacts.
+    
+    Args:
+        skip_pdf: If True, skip PDF report generation for faster evaluation.
+    """
     started = time.perf_counter()
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -382,10 +285,23 @@ def evaluate_predictions(
         encoding="utf-8",
     )
     _write_summary(metrics, out_path)
-    _save_confusion(metrics, out_path, dpi=eval_dpi)
-    _save_classification(metrics, out_path, horizon_h=horizon_h, station=station, dpi=eval_dpi)
-    _save_error_plots(
-        y_true_arr, y_pred_arr, X, out_path, station_labels, horizon_h=horizon_h, station=station, dpi=eval_dpi
-    )
-    _save_pi_plots(y_true_arr, q05_arr, q95_arr, out_path, horizon_h=horizon_h, station=station, dpi=eval_dpi)
+    if not skip_pdf:
+        generate_pdf_report(
+            metrics,
+            out_path / "report.pdf",
+            station=station,
+            horizon_h=horizon_h,
+            backend=backend,
+            y_true=y_true_arr,
+            y_pred=y_pred_arr,
+            X=X,
+            station_labels=station_labels,
+            q05=q05_arr,
+            q95=q95_arr,
+            hyperparams=hyperparams,
+            feature_importance=feature_importance,
+            model_version=model_version,
+            run_id=run_id,
+            eval_dpi=eval_dpi,
+        )
     return _json_safe(metrics)

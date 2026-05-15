@@ -1,0 +1,53 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "ข้ามไปเนื้อหาหลัก" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e4]:
+      - link "HeatShield AI — หน้าหลัก" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - text: HeatShield
+      - button "เลือกสถานี" [ref=e12]:
+        - img [ref=e13]
+        - text: สถานี
+        - img [ref=e16]
+    - main [ref=e18]:
+      - main [ref=e19]:
+        - link "← หน้าหลัก" [ref=e20] [cursor=pointer]:
+          - /url: /
+        - heading "จำลองมาตรการลดความเสี่ยง" [level=1] [ref=e21]
+        - paragraph [ref=e22]: เปรียบเทียบมาตรการลดความเสี่ยง
+        - generic [ref=e23]:
+          - button "1 สภาพแวดล้อม" [disabled] [ref=e24]:
+            - generic [ref=e25]: "1"
+            - text: สภาพแวดล้อม
+          - button "2 มาตรการ" [disabled] [ref=e26]:
+            - generic [ref=e27]: "2"
+            - text: มาตรการ
+          - button "3 ผลเปรียบเทียบ" [disabled] [ref=e28]:
+            - generic [ref=e29]: "3"
+            - text: ผลเปรียบเทียบ
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - generic [ref=e33]: อุณหภูมิ (°C)
+              - spinbutton [ref=e34]: "36"
+            - generic [ref=e35]:
+              - generic [ref=e36]: ความชื้นสัมพัทธ์ (%)
+              - spinbutton [ref=e37]: "75"
+            - generic [ref=e38]:
+              - generic [ref=e39]:
+                - generic [ref=e40]: ระยะเวลา
+                - generic [ref=e41]: 120 นาที
+              - slider [ref=e42]: "121"
+            - generic [ref=e43]:
+              - generic [ref=e44]:
+                - generic [ref=e45]: เวลาของวัน
+                - generic [ref=e46]: 13:00 น.
+              - slider [ref=e47]: "13"
+          - 'button "ถัดไป: เลือกมาตรการ →" [ref=e48] [cursor=pointer]'
+    - contentinfo [ref=e49]:
+      - paragraph [ref=e50]: HeatShield AI — ข้อมูลจาก TMD · ERA5 · NASA POWER
+      - paragraph [ref=e51]: 5 สถานี · Thailand
+  - button "Open Next.js Dev Tools" [ref=e57] [cursor=pointer]:
+    - img [ref=e58]

@@ -1,0 +1,483 @@
+- generic [ref=e2]:
+  - region
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e6]:
+      - heading "Navigation Menu" [level=2] [ref=e7]
+      - generic [ref=e9]:
+        - button "Toggle navigation" [ref=e11] [cursor=pointer]
+        - link "Homepage" [ref=e17] [cursor=pointer]:
+          - /url: /
+          - img [ref=e18]
+        - generic [ref=e20]:
+          - link "Sign in" [ref=e21] [cursor=pointer]:
+            - /url: /login?return_to=https%3A%2F%2Fgithub.com%2Fgooglecolab%2Fcolab-mcp
+          - button "Appearance settings" [ref=e24] [cursor=pointer]:
+            - img
+  - main [ref=e28]:
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e32]:
+          - img [ref=e33]
+          - link "googlecolab" [ref=e36] [cursor=pointer]:
+            - /url: /googlecolab
+          - generic [ref=e37]: /
+          - strong [ref=e38]:
+            - link "colab-mcp" [ref=e39] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp
+          - generic [ref=e40]: Public
+        - generic [ref=e41]:
+          - list:
+            - listitem [ref=e42]:
+              - link "You must be signed in to change notification settings" [ref=e43] [cursor=pointer]:
+                - /url: /login?return_to=%2Fgooglecolab%2Fcolab-mcp
+                - img [ref=e44]
+                - text: Notifications
+            - listitem [ref=e46]:
+              - link "Fork 107" [ref=e47] [cursor=pointer]:
+                - /url: /login?return_to=%2Fgooglecolab%2Fcolab-mcp
+                - img [ref=e48]
+                - text: Fork
+                - generic "107" [ref=e50]
+            - listitem [ref=e51]:
+              - link "You must be signed in to star a repository" [ref=e53] [cursor=pointer]:
+                - /url: /login?return_to=%2Fgooglecolab%2Fcolab-mcp
+                - img [ref=e54]
+                - text: Star
+                - generic "600 users starred this repository" [ref=e56]: "600"
+      - navigation "Repository" [ref=e57]:
+        - list [ref=e58]:
+          - listitem [ref=e59]:
+            - link "Code" [ref=e60] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp
+              - img [ref=e61]
+              - generic [ref=e63]: Code
+          - listitem [ref=e64]:
+            - link "Issues 8" [ref=e65] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/issues
+              - img [ref=e66]
+              - generic [ref=e69]: Issues
+              - generic "8" [ref=e70]
+          - listitem [ref=e71]:
+            - link "Pull requests 8" [ref=e72] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/pulls
+              - img [ref=e73]
+              - generic [ref=e75]: Pull requests
+              - generic "8" [ref=e76]
+          - listitem [ref=e77]:
+            - link "Discussions" [ref=e78] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/discussions
+              - img [ref=e79]
+              - generic [ref=e81]: Discussions
+          - listitem [ref=e82]:
+            - link "Actions" [ref=e83] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/actions
+              - img [ref=e84]
+              - generic [ref=e86]: Actions
+          - listitem [ref=e87]:
+            - link "Projects" [ref=e88] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/projects
+              - img [ref=e89]
+              - generic [ref=e91]: Projects
+          - listitem [ref=e92]
+          - listitem [ref=e93]
+        - button "Additional navigation options" [ref=e97] [cursor=pointer]:
+          - img
+    - generic [ref=e110]:
+      - heading "googlecolab/colab-mcp" [level=1] [ref=e112]
+      - generic [ref=e113]:
+        - generic [ref=e116]:
+          - generic [ref=e117]:
+            - generic [ref=e118]:
+              - button "main branch" [ref=e120] [cursor=pointer]:
+                - generic [ref=e121]:
+                  - generic [ref=e123]:
+                    - img [ref=e125]
+                    - generic [ref=e128]: main
+                  - generic:
+                    - img
+              - generic [ref=e129]:
+                - link "Go to Branches page" [ref=e130] [cursor=pointer]:
+                  - /url: /googlecolab/colab-mcp/branches
+                  - img [ref=e131]
+                - link "Go to Tags page" [ref=e133] [cursor=pointer]:
+                  - /url: /googlecolab/colab-mcp/tags
+                  - img [ref=e134]
+            - generic [ref=e136]:
+              - button "Go to file" [ref=e139] [cursor=pointer]:
+                - generic [ref=e141]: Go to file
+              - button "Code" [ref=e142] [cursor=pointer]:
+                - generic [ref=e143]:
+                  - generic:
+                    - img
+                  - generic [ref=e144]: Code
+                  - generic:
+                    - img
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - heading "Folders and files" [level=2] [ref=e147]
+              - table "Folders and files" [ref=e148]:
+                - rowgroup:
+                  - row "Name Last commit message Last commit date":
+                    - columnheader "Name"
+                    - columnheader "Last commit message":
+                      - generic "Last commit message"
+                    - columnheader "Last commit date":
+                      - generic "Last commit date"
+                - rowgroup [ref=e149]:
+                  - row "Latest commit History View commit history for this file." [ref=e150]:
+                    - cell "Latest commit History View commit history for this file." [ref=e151]:
+                      - generic [ref=e152]:
+                        - heading "Latest commit" [level=2] [ref=e153]
+                        - generic [ref=e156]:
+                          - heading "History" [level=2] [ref=e157]
+                          - link "View commit history for this file." [ref=e159] [cursor=pointer]:
+                            - /url: /googlecolab/colab-mcp/commits/main/
+                            - generic [ref=e160]:
+                              - generic:
+                                - img
+                  - row ".githooks, (Directory)" [ref=e161]:
+                    - cell ".githooks, (Directory)" [ref=e162]:
+                      - generic [ref=e163]:
+                        - img [ref=e164]
+                        - link ".githooks, (Directory)" [ref=e169] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/tree/main/.githooks
+                          - text: .githooks
+                    - cell [ref=e170]
+                    - cell [ref=e172]
+                  - row "src/colab_mcp, (Directory)" [ref=e175]:
+                    - cell "src/colab_mcp, (Directory)" [ref=e176]:
+                      - generic [ref=e177]:
+                        - img [ref=e178]
+                        - link "src/colab_mcp, (Directory)" [ref=e183] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/tree/main/src/colab_mcp
+                          - text: src/colab_mcp
+                    - cell [ref=e184]
+                    - cell [ref=e186]
+                  - row "tests, (Directory)" [ref=e189]:
+                    - cell "tests, (Directory)" [ref=e190]:
+                      - generic [ref=e191]:
+                        - img [ref=e192]
+                        - link "tests, (Directory)" [ref=e197] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/tree/main/tests
+                          - text: tests
+                    - cell [ref=e198]
+                    - cell [ref=e200]
+                  - row ".gitignore, (File)" [ref=e203]:
+                    - cell ".gitignore, (File)" [ref=e204]:
+                      - generic [ref=e205]:
+                        - img [ref=e206]
+                        - link ".gitignore, (File)" [ref=e211] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/.gitignore
+                          - text: .gitignore
+                    - cell [ref=e212]
+                    - cell [ref=e214]
+                  - row ".pre-commit-config.yaml, (File)" [ref=e217]:
+                    - cell ".pre-commit-config.yaml, (File)" [ref=e218]:
+                      - generic [ref=e219]:
+                        - img [ref=e220]
+                        - link ".pre-commit-config.yaml, (File)" [ref=e225] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/.pre-commit-config.yaml
+                          - text: .pre-commit-config.yaml
+                    - cell [ref=e226]
+                    - cell [ref=e228]
+                  - row ".python-version, (File)" [ref=e231]:
+                    - cell ".python-version, (File)" [ref=e232]:
+                      - generic [ref=e233]:
+                        - img [ref=e234]
+                        - link ".python-version, (File)" [ref=e239] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/.python-version
+                          - text: .python-version
+                    - cell [ref=e240]
+                    - cell [ref=e242]
+                  - row "CONTRIBUTING.md, (File)" [ref=e245]:
+                    - cell "CONTRIBUTING.md, (File)" [ref=e246]:
+                      - generic [ref=e247]:
+                        - img [ref=e248]
+                        - link "CONTRIBUTING.md, (File)" [ref=e253] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/CONTRIBUTING.md
+                          - text: CONTRIBUTING.md
+                    - cell [ref=e254]
+                    - cell [ref=e256]
+                  - row "LICENSE, (File)" [ref=e259]:
+                    - cell "LICENSE, (File)" [ref=e260]:
+                      - generic [ref=e261]:
+                        - img [ref=e262]
+                        - link "LICENSE, (File)" [ref=e267] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/LICENSE
+                          - text: LICENSE
+                    - cell [ref=e268]
+                    - cell [ref=e270]
+                  - row "README.md, (File)" [ref=e273]:
+                    - cell "README.md, (File)" [ref=e274]:
+                      - generic [ref=e275]:
+                        - img [ref=e276]
+                        - link "README.md, (File)" [ref=e281] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/README.md
+                          - text: README.md
+                    - cell [ref=e282]
+                    - cell [ref=e284]
+                  - row "pyproject.toml, (File)" [ref=e287]:
+                    - cell "pyproject.toml, (File)" [ref=e288]:
+                      - generic [ref=e289]:
+                        - img [ref=e290]
+                        - link "pyproject.toml, (File)" [ref=e295] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/pyproject.toml
+                          - text: pyproject.toml
+                    - cell [ref=e296]
+                    - cell [ref=e298]
+                  - row "uv.lock, (File)" [ref=e301]:
+                    - cell "uv.lock, (File)" [ref=e302]:
+                      - generic [ref=e303]:
+                        - img [ref=e304]
+                        - link "uv.lock, (File)" [ref=e309] [cursor=pointer]:
+                          - /url: /googlecolab/colab-mcp/blob/main/uv.lock
+                          - text: uv.lock
+                    - cell [ref=e310]
+                    - cell [ref=e312]
+            - generic [ref=e316]:
+              - generic [ref=e317]:
+                - heading "Repository files navigation" [level=2] [ref=e318]
+                - navigation "Repository files" [ref=e319]:
+                  - list [ref=e320]:
+                    - listitem [ref=e321]:
+                      - link "README" [ref=e322] [cursor=pointer]:
+                        - /url: "#"
+                        - img [ref=e324]
+                        - generic [ref=e326]: README
+                    - listitem [ref=e327]:
+                      - link "Contributing" [ref=e328] [cursor=pointer]:
+                        - /url: "#"
+                        - img [ref=e330]
+                        - generic [ref=e332]: Contributing
+                    - listitem [ref=e333]:
+                      - link "Apache-2.0 license" [ref=e334] [cursor=pointer]:
+                        - /url: "#"
+                        - img [ref=e336]
+                        - generic [ref=e338]: Apache-2.0 license
+                - button "Outline" [ref=e339] [cursor=pointer]:
+                  - img [ref=e340]
+              - article [ref=e343]:
+                - generic [ref=e344]:
+                  - heading "Colab-mcp" [level=1] [ref=e345]
+                  - 'link "Permalink: Colab-mcp" [ref=e346] [cursor=pointer]':
+                    - /url: "#colab-mcp"
+                    - img [ref=e347]
+                - paragraph [ref=e349]: An MCP server for bridging your local agent to a Colab session in the browser.
+                - generic [ref=e350]:
+                  - heading "Supported Clients" [level=1] [ref=e351]
+                  - 'link "Permalink: Supported Clients" [ref=e352] [cursor=pointer]':
+                    - /url: "#supported-clients"
+                    - img [ref=e353]
+                - paragraph [ref=e355]:
+                  - text: This MCP server requires client support for
+                  - code [ref=e356]: notifications/tools/list_changed
+                  - text: and for the client to be running locally on your device.
+                - paragraph [ref=e357]: "Popular clients that fit these criteria include:"
+                - list [ref=e358]:
+                  - listitem [ref=e359]: Gemini CLI
+                  - listitem [ref=e360]: Claude Code
+                  - listitem [ref=e361]: Windsurf
+                - generic [ref=e362]:
+                  - heading "Setup" [level=1] [ref=e363]
+                  - 'link "Permalink: Setup" [ref=e364] [cursor=pointer]':
+                    - /url: "#setup"
+                    - img [ref=e365]
+                - list [ref=e367]:
+                  - listitem [ref=e368]:
+                    - text: Install
+                    - code [ref=e369]: uv
+                    - text: (
+                    - code [ref=e370]: pip install uv
+                    - text: )
+                  - listitem [ref=e371]: "Configure for usage (eg for mcp.json style services):"
+                - generic [ref=e372]:
+                  - code [ref=e374]: "... \"mcpServers\": { \"colab-mcp\": { \"command\": \"uvx\", \"args\": [\"git+https://github.com/googlecolab/colab-mcp\"], \"timeout\": 30000 } } ..."
+                  - button "Copy" [ref=e376] [cursor=pointer]:
+                    - img [ref=e377]
+                - paragraph [ref=e380]:
+                  - text: (If you have a non-standard default package index (
+                  - strong [ref=e381]: Googlers
+                  - text: ), you may also need to add
+                  - code [ref=e382]: "--index https://pypi.org/simple"
+                  - text: )
+                - generic [ref=e383]:
+                  - heading "Issues & Discussions" [level=1] [ref=e384]
+                  - 'link "Permalink: Issues & Discussions" [ref=e385] [cursor=pointer]':
+                    - /url: "#issues--discussions"
+                    - img [ref=e386]
+                - paragraph [ref=e388]:
+                  - text: We are using GitHub
+                  - link "discussions" [ref=e389] [cursor=pointer]:
+                    - /url: https://github.com/googlecolab/colab-mcp/discussions
+                  - text: as the place for issue discussion and feature requests. As discussions mature into action items, we will add those items as issues. This helps us ensure that issues in the issue tracker are well-understood, deduplicated, and actionable. For these reasons,
+                  - strong [ref=e390]: please do NOT open issues directly.
+                - generic [ref=e391]:
+                  - heading "Contributing" [level=1] [ref=e392]
+                  - 'link "Permalink: Contributing" [ref=e393] [cursor=pointer]':
+                    - /url: "#contributing"
+                    - img [ref=e394]
+                - paragraph [ref=e396]: We unfortunately don't have the bandwidth to support review of external contributions, and we don't want user PRs to languish, so we aren't accepting any external contributions right now.
+                - paragraph [ref=e397]:
+                  - text: If you have a great idea or pain point, we would love to hear about it on our
+                  - link "discussions" [ref=e398] [cursor=pointer]:
+                    - /url: https://github.com/googlecolab/colab-mcp/discussions
+                  - text: page - the preferred place for issue discussion and feature requests.
+                - generic [ref=e399]:
+                  - heading "Internal - For Colab Developers" [level=1] [ref=e400]
+                  - 'link "Permalink: Internal - For Colab Developers" [ref=e401] [cursor=pointer]':
+                    - /url: "#internal---for-colab-developers"
+                    - img [ref=e402]
+                - generic [ref=e404]:
+                  - heading "Prerequisites" [level=3] [ref=e405]
+                  - 'link "Permalink: Prerequisites" [ref=e406] [cursor=pointer]':
+                    - /url: "#prerequisites"
+                    - img [ref=e407]
+                - list [ref=e409]:
+                  - listitem [ref=e410]:
+                    - code [ref=e411]: uv
+                    - text: is required (
+                    - code [ref=e412]: pip install uv
+                    - text: )
+                  - listitem [ref=e413]: Configure git hooks to run repo presubmits
+                - generic [ref=e414]:
+                  - generic [ref=e415]: git config core.hooksPath .githooks
+                  - button "Copy" [ref=e417] [cursor=pointer]:
+                    - img [ref=e418]
+                - generic [ref=e421]:
+                  - heading "Gemini CLI setup" [level=3] [ref=e422]
+                  - 'link "Permalink: Gemini CLI setup" [ref=e423] [cursor=pointer]':
+                    - /url: "#gemini-cli-setup"
+                    - img [ref=e424]
+                - generic [ref=e426]:
+                  - code [ref=e428]: "... \"mcpServers\": { \"colab-mcp\": { \"command\": \"uv\", \"args\": [\"run\", \"colab-mcp\"], \"cwd\": \"/path/to/github/colab-mcp\", \"timeout\": 30000 } } ..."
+                  - button "Copy" [ref=e430] [cursor=pointer]:
+                    - img [ref=e431]
+        - generic [ref=e437]:
+          - generic [ref=e440]:
+            - heading "About" [level=2] [ref=e441]
+            - paragraph [ref=e442]: An MCP server for interacting with Google Colab
+            - heading "Resources" [level=3] [ref=e443]
+            - link "Readme" [ref=e445] [cursor=pointer]:
+              - /url: "#readme-ov-file"
+              - img [ref=e446]
+              - text: Readme
+            - heading "License" [level=3] [ref=e448]
+            - link "Apache-2.0 license" [ref=e450] [cursor=pointer]:
+              - /url: "#Apache-2.0-1-ov-file"
+              - img [ref=e451]
+              - text: Apache-2.0 license
+            - heading "Contributing" [level=3] [ref=e453]
+            - link "Contributing" [ref=e455] [cursor=pointer]:
+              - /url: "#contributing-ov-file"
+              - img [ref=e456]
+              - text: Contributing
+            - link "Activity" [ref=e459] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/activity
+              - img [ref=e460]
+              - text: Activity
+            - link "Custom properties" [ref=e463] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/custom-properties
+              - img [ref=e464]
+              - text: Custom properties
+            - heading "Stars" [level=3] [ref=e466]
+            - link "600 stars" [ref=e468] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/stargazers
+              - img [ref=e469]
+              - strong [ref=e471]: "600"
+              - text: stars
+            - heading "Watchers" [level=3] [ref=e472]
+            - link "4 watching" [ref=e474] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/watchers
+              - img [ref=e475]
+              - strong [ref=e477]: "4"
+              - text: watching
+            - heading "Forks" [level=3] [ref=e478]
+            - link "107 forks" [ref=e480] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/forks
+              - img [ref=e481]
+              - strong [ref=e483]: "107"
+              - text: forks
+            - link "Report repository" [ref=e485] [cursor=pointer]:
+              - /url: /contact/report-content?content_url=https%3A%2F%2Fgithub.com%2Fgooglecolab%2Fcolab-mcp&report=googlecolab+%28user%29
+          - generic [ref=e487]:
+            - heading "Releases 3" [level=2] [ref=e488]:
+              - link "Releases 3" [ref=e489] [cursor=pointer]:
+                - /url: /googlecolab/colab-mcp/releases
+                - text: Releases
+                - generic "3" [ref=e490]
+            - link "Colab MCP v1.0.2 Latest Mar 27, 2026on Mar 28" [ref=e491] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/releases/tag/v1.0.2
+              - img [ref=e492]
+              - generic [ref=e494]:
+                - generic [ref=e495]:
+                  - generic [ref=e496]: Colab MCP v1.0.2
+                  - 'generic "Label: Latest" [ref=e497]': Latest
+                - generic [ref=e498]: Mar 27, 2026on Mar 28
+            - link "+ 2 releases" [ref=e500] [cursor=pointer]:
+              - /url: /googlecolab/colab-mcp/releases
+          - generic "Loading latest packages" [ref=e503]:
+            - heading "Packages" [level=2] [ref=e504]:
+              - link "Packages" [ref=e505] [cursor=pointer]:
+                - /url: /orgs/googlecolab/packages?repo_name=colab-mcp
+          - generic "Loading contributors" [ref=e517]:
+            - generic:
+              - heading "Contributors" [level=2] [ref=e518]:
+                - link "Contributors" [ref=e519] [cursor=pointer]:
+                  - /url: /googlecolab/colab-mcp/graphs/contributors
+              - list [ref=e520]:
+                - listitem [ref=e521]
+                - listitem [ref=e523]
+                - listitem [ref=e525]
+          - generic [ref=e528]:
+            - heading "Languages" [level=2] [ref=e529]
+            - list [ref=e534]:
+              - listitem [ref=e535]:
+                - link "Python 99.2%" [ref=e536] [cursor=pointer]:
+                  - /url: /googlecolab/colab-mcp/search?l=python
+                  - img [ref=e537]
+                  - generic [ref=e539]: Python
+                  - generic [ref=e540]: 99.2%
+              - listitem [ref=e541]:
+                - link "Shell 0.8%" [ref=e542] [cursor=pointer]:
+                  - /url: /googlecolab/colab-mcp/search?l=shell
+                  - img [ref=e543]
+                  - generic [ref=e545]: Shell
+                  - generic [ref=e546]: 0.8%
+  - contentinfo [ref=e548]:
+    - heading "Footer" [level=2] [ref=e549]
+    - generic [ref=e550]:
+      - generic [ref=e551]:
+        - link "GitHub Homepage" [ref=e552] [cursor=pointer]:
+          - /url: https://github.com
+          - img [ref=e553]
+        - generic [ref=e555]: © 2026 GitHub, Inc.
+      - navigation "Footer" [ref=e556]:
+        - heading "Footer navigation" [level=3] [ref=e557]
+        - list "Footer navigation" [ref=e558]:
+          - listitem [ref=e559]:
+            - link "Terms" [ref=e560] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/github-terms/github-terms-of-service
+          - listitem [ref=e561]:
+            - link "Privacy" [ref=e562] [cursor=pointer]:
+              - /url: https://docs.github.com/site-policy/privacy-policies/github-privacy-statement
+          - listitem [ref=e563]:
+            - link "Security" [ref=e564] [cursor=pointer]:
+              - /url: https://github.com/security
+          - listitem [ref=e565]:
+            - link "Status" [ref=e566] [cursor=pointer]:
+              - /url: https://www.githubstatus.com/
+          - listitem [ref=e567]:
+            - link "Community" [ref=e568] [cursor=pointer]:
+              - /url: https://github.community/
+          - listitem [ref=e569]:
+            - link "Docs" [ref=e570] [cursor=pointer]:
+              - /url: https://docs.github.com/
+          - listitem [ref=e571]:
+            - link "Contact" [ref=e572] [cursor=pointer]:
+              - /url: https://support.github.com?tags=dotcom-footer
+          - listitem [ref=e573]:
+            - button "Manage cookies" [ref=e575] [cursor=pointer]
+          - listitem [ref=e576]:
+            - button "Do not share my personal information" [ref=e578] [cursor=pointer]

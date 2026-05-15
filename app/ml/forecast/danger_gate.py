@@ -108,10 +108,14 @@ class DangerGate:
                     n_estimators=n_estimators,
                     random_state=random_state,
                 )
-            except Exception as exc:
+            except (ImportError, ValueError, RuntimeError) as exc:
                 logger.warning(
-                    "DangerGate LightGBM training failed (%s). Falling back to BRF backend.",
+                    "DangerGate LightGBM training failed (%s: %s). Falling back to BRF backend. "
+                    "samples=%d danger_ratio=%.3f",
+                    type(exc).__name__,
                     exc,
+                    len(X),
+                    (y_tier == 2).mean() if len(y_tier) > 0 else 0.0,
                 )
                 self.gate_backend = "brf"
                 self._fit_brf(X, y_tier, n_estimators=n_estimators, random_state=random_state)
@@ -224,8 +228,8 @@ class DangerGate:
         self.danger_threshold = self._best_threshold(
             proba[:, 2],
             danger_true,
-            precision_min=0.55,
-            recall_min=0.40,
+            precision_min=0.35,
+            recall_min=0.30,
             default=0.35,
             beta=2.0,  # recall-heavy for danger tier
         )

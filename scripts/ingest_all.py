@@ -25,6 +25,7 @@ import argparse
 import logging
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -46,9 +47,18 @@ def run_nasa_power(station_ids: list[str], start: date, end: date, force: bool) 
     logger.info("=" * 60)
 
     client = NASAPowerClient()
-    for sid in station_ids:
-        stats = ingest_station_range(client, sid, start, end, force=force)
-        logger.info("NASA POWER %s: %s", sid, stats)
+    with ThreadPoolExecutor(max_workers=min(4, len(station_ids))) as executor:
+        future_to_sid = {
+            executor.submit(ingest_station_range, client, sid, start, end, force=force): sid
+            for sid in station_ids
+        }
+        for future in as_completed(future_to_sid):
+            sid = future_to_sid[future]
+            try:
+                stats = future.result()
+                logger.info("NASA POWER %s: %s", sid, stats)
+            except Exception as exc:
+                logger.error("NASA POWER %s failed: %s", sid, exc)
 
 
 def run_era5(station_ids: list[str], start: date, end: date, force: bool) -> None:
@@ -187,6 +197,7 @@ def main() -> None:
         run_nasa_power(station_ids, start_date, end_date, args.force)
 
     if "era5" in requested:
+        # ERA5 already parallelises internally; keep sequential entry
         run_era5(station_ids, start_date, end_date, args.force)
 
     if "modis" in requested:

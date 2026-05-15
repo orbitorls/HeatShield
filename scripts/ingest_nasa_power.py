@@ -23,6 +23,7 @@ import argparse
 import logging
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -128,12 +129,24 @@ def main() -> None:
     client = NASAPowerClient()
     total_stats = {"ok": 0, "skipped": 0, "error": 0}
 
-    for sid in station_ids:
-        logger.info("Processing station: %s (%s → %s)", sid, start_date, end_date)
-        stats = ingest_station_range(client, sid, start_date, end_date,
-                                     chunk_days=args.chunk_days, force=args.force)
-        for k, v in stats.items():
-            total_stats[k] = total_stats.get(k, 0) + v
+    with ThreadPoolExecutor(max_workers=min(4, len(station_ids))) as executor:
+        future_to_sid = {
+            executor.submit(
+                ingest_station_range, client, sid, start_date, end_date,
+                chunk_days=args.chunk_days, force=args.force
+            ): sid
+            for sid in station_ids
+        }
+        for future in as_completed(future_to_sid):
+            sid = future_to_sid[future]
+            try:
+                stats = future.result()
+                logger.info("Processing station complete: %s (%s → %s)", sid, start_date, end_date)
+                for k, v in stats.items():
+                    total_stats[k] = total_stats.get(k, 0) + v
+            except Exception as exc:
+                logger.error("Station %s failed: %s", sid, exc)
+                total_stats["error"] = total_stats.get("error", 0) + 1
 
     logger.info("NASA POWER ingestion complete: %s", total_stats)
 

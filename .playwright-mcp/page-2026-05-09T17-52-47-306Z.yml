@@ -1,0 +1,63 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "ข้ามไปเนื้อหาหลัก" [ref=e3] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e4]:
+      - link "HeatShield AI — หน้าหลัก" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7]
+        - text: HeatShield
+      - button "เลือกสถานี" [ref=e12]:
+        - img [ref=e13]
+        - text: สถานี
+        - img [ref=e16]
+    - main [ref=e18]:
+      - main [ref=e19]:
+        - link "← หน้าหลัก" [ref=e20] [cursor=pointer]:
+          - /url: /
+        - heading "ตรวจจับคลื่นร้อน" [level=1] [ref=e21]
+        - paragraph [ref=e22]: วิเคราะห์ข้อมูลจากสถานีตรวจวัดอัตโนมัติ — ไม่ต้องป้อนข้อมูลเอง
+        - generic [ref=e23]:
+          - generic [ref=e24]:
+            - generic [ref=e25]:
+              - generic [ref=e26]: เลือกสถานี
+              - combobox [ref=e27]:
+                - option "กรุงเทพมหานคร (Don Mueang) (BKK_01)" [selected]
+                - option "เชียงใหม่ (CNX_01)"
+                - option "ขอนแก่น (KKN_01)"
+                - option "หาดใหญ่ (สงขลา) (HYI_01)"
+                - option "ระยอง (RYG_01)"
+            - generic [ref=e28]:
+              - generic [ref=e29]: วิธีตรวจจับ
+              - generic [ref=e30]:
+                - button "มาตรฐาน ตรวจจับทั่วไป" [ref=e31] [cursor=pointer]:
+                  - generic [ref=e32]: มาตรฐาน
+                  - generic [ref=e33]: ตรวจจับทั่วไป
+                - button "เข้มงวด ตรวจจับเร็วขึ้น" [ref=e34] [cursor=pointer]:
+                  - generic [ref=e35]: เข้มงวด
+                  - generic [ref=e36]: ตรวจจับเร็วขึ้น
+                - button "ผ่อนปรน ตรวจจับช้าลง" [ref=e37] [cursor=pointer]:
+                  - generic [ref=e38]: ผ่อนปรน
+                  - generic [ref=e39]: ตรวจจับช้าลง
+            - generic [ref=e40]:
+              - generic [ref=e41]: ระยะเวลาวิเคราะห์
+              - generic [ref=e42]:
+                - button "7 วัน" [ref=e43] [cursor=pointer]:
+                  - generic [ref=e44]: 7 วัน
+                - button "14 วัน" [ref=e45] [cursor=pointer]:
+                  - generic [ref=e46]: 14 วัน
+                - button "30 วัน" [ref=e47] [cursor=pointer]:
+                  - generic [ref=e48]: 30 วัน
+              - paragraph [ref=e49]: 2 สัปดาห์
+            - button "▸ ตั้งค่าขั้นสูง (แสดง)" [ref=e50] [cursor=pointer]:
+              - generic [ref=e51]: ▸
+              - text: ตั้งค่าขั้นสูง (แสดง)
+            - button "ตรวจจับอัตโนมัติ →" [ref=e52] [cursor=pointer]
+          - generic [ref=e54]:
+            - text: เลือกสถานีแล้วกด "ตรวจจับอัตโนมัติ"
+            - generic [ref=e55]: ดึงข้อมูลย้อนหลังและวิเคราะห์ให้โดยอัตโนมัติ
+    - contentinfo [ref=e56]:
+      - paragraph [ref=e57]: HeatShield AI — ข้อมูลจาก TMD · ERA5 · NASA POWER
+      - paragraph [ref=e58]: 5 สถานี · Thailand
+  - button "Open Next.js Dev Tools" [ref=e64] [cursor=pointer]:
+    - img [ref=e65]

@@ -1,0 +1,256 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e5]:
+    - banner [ref=e6]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e17]: 🌡️
+          - generic [ref=e19]:
+            - heading "HEATGUARD" [level=1] [ref=e20]
+            - paragraph [ref=e21]: สวัสดีตอนเย็น • ระบบเตือนความเสี่ยงคลื่นความร้อน
+        - generic [ref=e22]:
+          - generic [ref=e23]:
+            - img [ref=e25]
+            - generic [ref=e28]:
+              - generic [ref=e29]: เลือกสถานที่
+              - combobox "เลือกสถานที่" [ref=e30] [cursor=pointer]:
+                - option "โรงเรียน A" [selected]
+                - option "โรงเรียน B"
+                - option "โรงเรียน C"
+                - option "สวนกลาง"
+                - option "ตลาดสยาม"
+            - img [ref=e32]
+          - generic [ref=e35]:
+            - img [ref=e36]
+            - text: SCHOOL • 13.7563°N, 100.5018°E
+    - generic [ref=e39]:
+      - img [ref=e41]
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - generic [ref=e45]:
+            - generic [ref=e47]: 👥
+            - generic [ref=e48]:
+              - heading "กลุ่มเปราะบาง" [level=2] [ref=e49]
+              - paragraph [ref=e50]: เลือกกลุ่มเพื่อดูความเสี่ยงเฉพาะ
+          - generic [ref=e51]:
+            - generic [ref=e52]: 👶
+            - generic [ref=e53]: นักเรียนประถม
+            - generic [ref=e54]: 1.3x
+        - generic [ref=e55]:
+          - button "👶 1.3 นักเรียนประถม เกณฑ์ 32°C" [pressed] [ref=e56] [cursor=pointer]:
+            - generic [ref=e58]:
+              - generic [ref=e59]:
+                - generic [ref=e61]: 👶
+                - generic [ref=e62]: "1.3"
+              - generic [ref=e63]: นักเรียนประถม
+              - generic [ref=e64]:
+                - img [ref=e65]
+                - generic [ref=e67]: เกณฑ์ 32°C
+          - button "👴 1.5 ผู้สูงอายุ เกณฑ์ 30°C" [ref=e69] [cursor=pointer]:
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - generic [ref=e73]: 👴
+                - generic [ref=e74]: "1.5"
+              - generic [ref=e75]: ผู้สูงอายุ
+              - generic [ref=e76]:
+                - img [ref=e77]
+                - generic [ref=e79]: เกณฑ์ 30°C
+          - button "🏍️ 1.2 นักขับขี่รถจักรยานยนต์ เกณฑ์ 35°C" [ref=e80] [cursor=pointer]:
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - generic [ref=e84]: 🏍️
+                - generic [ref=e85]: "1.2"
+              - generic [ref=e86]: นักขับขี่รถจักรยานยนต์
+              - generic [ref=e87]:
+                - img [ref=e88]
+                - generic [ref=e90]: เกณฑ์ 35°C
+          - button "👷 1.4 กรรมกรกลางแจ้ง เกณฑ์ 33°C" [ref=e91] [cursor=pointer]:
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - generic [ref=e95]: 👷
+                - generic [ref=e96]: "1.4"
+              - generic [ref=e97]: กรรมกรกลางแจ้ง
+              - generic [ref=e98]:
+                - img [ref=e99]
+                - generic [ref=e101]: เกณฑ์ 33°C
+          - button "👥 1 ประชาชนทั่วไป เกณฑ์ 35°C" [ref=e102] [cursor=pointer]:
+            - generic [ref=e103]:
+              - generic [ref=e104]:
+                - generic [ref=e106]: 👥
+                - generic [ref=e107]: "1"
+              - generic [ref=e108]: ประชาชนทั่วไป
+              - generic [ref=e109]:
+                - img [ref=e110]
+                - generic [ref=e112]: เกณฑ์ 35°C
+        - generic [ref=e113]:
+          - generic [ref=e114]: "ระดับความเสี่ยง:"
+          - generic [ref=e117]: สูงมาก (≥1.5x)
+          - generic [ref=e120]: สูง (≥1.2x)
+          - generic [ref=e123]: ปานกลาง (≥1.0x)
+          - generic [ref=e126]: ต่ำ (<1.0x)
+    - generic [ref=e128]:
+      - generic [ref=e130]:
+        - generic [ref=e131]:
+          - generic [ref=e133]: 📊
+          - generic [ref=e134]:
+            - heading "ความเสี่ยงรายชั่วโมง" [level=2] [ref=e135]
+            - paragraph [ref=e136]: Hourly Risk Forecast
+        - generic [ref=e137]:
+          - generic [ref=e140]: วิกฤต
+          - generic [ref=e143]: สูง
+          - generic [ref=e146]: ปานกลาง
+          - generic [ref=e149]: ต่ำ
+      - generic [ref=e152]:
+        - img [ref=e153]:
+          - generic [ref=e155]:
+            - generic [ref=e157]: 06:00
+            - generic [ref=e159]: 07:00
+            - generic [ref=e161]: 08:00
+            - generic [ref=e163]: 09:00
+            - generic [ref=e165]: 10:00
+            - generic [ref=e167]: 11:00
+            - generic [ref=e169]: 12:00
+            - generic [ref=e171]: 13:00
+            - generic [ref=e173]: 14:00
+            - generic [ref=e175]: 15:00
+            - generic [ref=e177]: 16:00
+            - generic [ref=e179]: 17:00
+            - generic [ref=e181]: 18:00
+            - generic [ref=e183]: 19:00
+            - generic [ref=e185]: 20:00
+          - generic [ref=e187]:
+            - generic [ref=e189]: "0"
+            - generic [ref=e191]: "25"
+            - generic [ref=e193]: "50"
+            - generic [ref=e195]: "75"
+            - generic [ref=e197]: "100"
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic:
+                  - generic: 14:00
+                - generic: ปานกลาง
+              - generic:
+                - generic:
+                  - generic:
+                    - generic: 🌡️
+                    - generic: อุณหภูมิ
+                  - generic: 39°C
+                - generic:
+                  - generic:
+                    - generic: 💧
+                    - generic: ความชื้น
+                  - generic: 40%
+                - generic:
+                  - generic:
+                    - generic: ⚠️
+                    - generic: คะแนนเสี่ยง
+                  - generic: "44.5"
+      - generic [ref=e230]:
+        - generic [ref=e231]:
+          - generic [ref=e232]:
+            - text: ค่าเฉลี่ย
+            - generic [ref=e233]: "36"
+          - generic [ref=e234]:
+            - text: สูงสุด
+            - generic [ref=e235]: "46"
+          - generic [ref=e236]:
+            - text: ต่ำสุด
+            - generic [ref=e237]: "25.4"
+        - generic [ref=e238]:
+          - generic [ref=e239]: "อัปเดต:"
+          - generic [ref=e240]: 19:14
+    - generic [ref=e241]:
+      - generic [ref=e242]:
+        - img [ref=e245]
+        - generic [ref=e254]:
+          - generic [ref=e255]:
+            - generic [ref=e256]:
+              - generic [ref=e257]:
+                - generic [ref=e259]: 🔮
+                - generic [ref=e260]: AI
+              - generic [ref=e261]:
+                - heading "What-If Simulator" [level=3] [ref=e262]
+                - paragraph [ref=e263]: ทดลองเลื่อนเวลากิจกรรม
+            - generic [ref=e266]: พร้อม
+          - generic [ref=e269]:
+            - generic [ref=e270]:
+              - generic [ref=e271]: ⏰ ย้ายจากเวลา
+              - generic [ref=e272]:
+                - combobox [ref=e273] [cursor=pointer]:
+                  - option "06:00"
+                  - option "07:00"
+                  - option "08:00"
+                  - option "09:00"
+                  - option "10:00"
+                  - option "11:00"
+                  - option "12:00"
+                  - option "13:00" [selected]
+                  - option "14:00"
+                  - option "15:00"
+                  - option "16:00"
+                  - option "17:00"
+                  - option "18:00"
+                  - option "19:00"
+                - generic [ref=e274]: ⚠️ ร้อน
+            - img [ref=e276]
+            - generic [ref=e278]:
+              - generic [ref=e279]: ✨ ไปเวลา
+              - generic [ref=e280]:
+                - combobox [ref=e281] [cursor=pointer]:
+                  - option "07:00"
+                  - option "08:00"
+                  - option "09:00"
+                  - option "10:00"
+                  - option "11:00"
+                  - option "12:00"
+                  - option "13:00"
+                  - option "14:00"
+                  - option "15:00"
+                  - option "16:00"
+                  - option "17:00" [selected]
+                  - option "18:00"
+                  - option "19:00"
+                  - option "20:00"
+                - generic [ref=e282]: 🌆 เย็น
+          - button "🔮 จำลองสถานการณ์ 13:00 → 17:00" [ref=e283] [cursor=pointer]:
+            - generic [ref=e284]:
+              - generic [ref=e285]: 🔮
+              - generic [ref=e286]: จำลองสถานการณ์
+              - generic [ref=e287]: 13:00 → 17:00
+          - generic [ref=e288]:
+            - generic [ref=e289]: 🔮
+            - paragraph [ref=e290]: เลือกช่วงเวลาและกดปุ่มเพื่อจำลองสถานการณ์
+            - paragraph [ref=e291]: ระบบจะวิเคราะห์ความเสี่ยงและแนะนำเวลาที่เหมาะสม
+      - generic [ref=e292]:
+        - generic [ref=e295]:
+          - generic [ref=e296]:
+            - generic [ref=e298]: 📋
+            - generic [ref=e299]:
+              - heading "คำแนะนำด้านความปลอดภัย" [level=3] [ref=e300]
+              - paragraph [ref=e301]: แนะนำสำหรับผู้ดูแล • 1 รายการ
+          - generic [ref=e302]:
+            - generic [ref=e303]: 🔶
+            - generic [ref=e304]: MEDIUM
+        - generic [ref=e309]:
+          - generic [ref=e311]: 🏠
+          - generic [ref=e312]:
+            - heading "จัดที่พักร่มเงา" [level=4] [ref=e314]
+            - paragraph [ref=e317]: เตรียมพื้นที่พักในร่มหรือที่มีเครื่องปรับอากาศ
+            - generic [ref=e319]: 🔶 ปานกลาง
+        - button "ดาวน์โหลด Action Card PDF" [ref=e321] [cursor=pointer]:
+          - generic [ref=e323]:
+            - img [ref=e324]
+            - generic [ref=e326]: ดาวน์โหลด Action Card
+            - generic [ref=e327]: PDF
+        - generic [ref=e328]:
+          - generic [ref=e329]: จำนวนคำแนะนำ
+          - generic [ref=e330]: 1 รายการ
+    - contentinfo [ref=e331]:
+      - generic [ref=e332]:
+        - generic [ref=e333]:
+          - generic [ref=e334]: 🔷 HeatGuard Dashboard
+          - generic [ref=e335]: •
+          - generic [ref=e336]: v1.0.0
+        - paragraph [ref=e337]: ระบบเตือนความเสี่ยงคลื่นความร้อนสำหรับประเทศไทย
+  - generic [ref=e338]: "0"

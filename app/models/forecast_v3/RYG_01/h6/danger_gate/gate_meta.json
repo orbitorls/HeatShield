@@ -1,8 +1,8 @@
 {
   "warning_floor": 38.0,
   "danger_floor": 42.0,
-  "warning_threshold": 0.6500000000000001,
-  "danger_threshold": 0.8000000000000002,
-  "gate_backend": "brf",
+  "warning_threshold": 0.33999999999999997,
+  "danger_threshold": 0.35,
+  "gate_backend": "lightgbm",
   "version": "v3-tier"
 }

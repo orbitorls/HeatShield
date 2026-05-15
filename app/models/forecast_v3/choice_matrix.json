@@ -33,5 +33,60 @@
     "24": "lightgbm_quantile",
     "48": "lightgbm_quantile",
     "72": "lightgbm_quantile"
+  },
+  "NSW_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "SPB_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "CEI_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "UDN_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "LPT_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "UBN_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "JTI_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "NMA_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "HKT_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "NST_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
+  },
+  "CBI_01": {
+    "6": "lightgbm_quantile",
+    "12": "lightgbm_quantile",
+    "24": "lightgbm_quantile"
   }
 }
