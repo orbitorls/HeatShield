@@ -21,3 +21,7 @@ logs/
 data/era5_cache/
 frontend/dist/
 models/
+*.pdf
+*.aux
+*.log
+*.toc
