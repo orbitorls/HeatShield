@@ -77,6 +77,10 @@ def get_failed(status: dict, target_stations: list[str] | None = None) -> list[t
     status JSON keys (from check_model_status.py):
       mae, skill_score, pi_coverage_90, danger_recall_42, danger_42_support
     """
+    if status is None:
+        log.error("Status dict is None — cannot evaluate failed models")
+        return []
+
     failed = []
     # support both "all" (full list) and "failed" (pre-filtered list)
     model_list = status.get("all", status.get("failed", []))
@@ -84,8 +88,16 @@ def get_failed(status: dict, target_stations: list[str] | None = None) -> list[t
         sid = m.get("station", "")
         if target_stations and sid not in target_stations:
             continue
-        hz = m.get("horizon", "h6")
-        h = int(str(hz).replace("h", ""))
+
+        hz = m.get("horizon")
+        if hz is None:
+            log.warning("  SKIP %s: missing horizon field, skipping model entry", sid)
+            continue
+        try:
+            h = int(str(hz).replace("h", ""))
+        except (ValueError, AttributeError):
+            log.warning("  SKIP %s: cannot parse horizon value %r", sid, hz)
+            continue
 
         mae = m.get("mae")
         skill = m.get("skill_score")
@@ -95,7 +107,7 @@ def get_failed(status: dict, target_stations: list[str] | None = None) -> list[t
 
         reasons = []
         if mae is not None and mae > THRESHOLDS["mae"].get(h, 2.5):
-            reasons.append(f"mae={mae:.3f}>{THRESHOLDS['mae'].get(h,2.5)}")
+            reasons.append(f"mae={mae:.3f}>{THRESHOLDS['mae'].get(h, 2.5)}")
         if skill is not None and skill < THRESHOLDS["skill"]:
             reasons.append(f"skill={skill:.3f}<{THRESHOLDS['skill']}")
         if pi_cov is not None:
@@ -127,11 +139,16 @@ def train_one(station: str, horizon: int, trials: int, years: int) -> bool:
     ]
     log.info("  CMD: %s", " ".join(cmd))
     t0 = time.time()
+    # 2-hour hard timeout: one (station, horizon) should never take longer than that
+    TRAIN_TIMEOUT_S = 7200
     try:
-        subprocess.run(cmd, cwd=ROOT, check=True)
+        subprocess.run(cmd, cwd=ROOT, check=True, timeout=TRAIN_TIMEOUT_S)
         elapsed = time.time() - t0
         log.info("  OK  %s h%d in %.0fs (%.1f min)", station, horizon, elapsed, elapsed / 60)
         return True
+    except subprocess.TimeoutExpired:
+        log.error("  FAIL %s h%d: timed out after %ds", station, horizon, TRAIN_TIMEOUT_S)
+        return False
     except subprocess.CalledProcessError as e:
         log.error("  FAIL %s h%d: exit=%s", station, horizon, e.returncode)
         return False
@@ -141,8 +158,8 @@ def load_state() -> dict:
     if STATE_FILE.exists():
         try:
             return json.loads(STATE_FILE.read_text())
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            log.warning("Could not load state file %s: %s — starting fresh", STATE_FILE, e)
     return {}   # {"{sid}_{h}": rounds_done}
 
 
