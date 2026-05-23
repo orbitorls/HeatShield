@@ -25,3 +25,12 @@ imbalanced-learn>=0.13
 joblib>=1.4
 fpdf2>=2.8.0
 # NASA POWER / MODIS — NASA POWER uses httpx (already listed); APPEEARS needs no extra deps
+
+# Model improvement dependencies
+ruptures>=0.24.0  # Changepoint detection
+shap>=0.42.0  # Feature selection and interpretability
+boruta>=0.3.0  # Feature selection
+# conformal-forecast package doesn't exist - using custom implementation
+neuralforecast>=1.7.0  # N-BEATS, N-HiTS
+autogluon.timeseries>=1.0.0  # AutoML for time series
+ray[tune]>=2.0.0  # Hyperband/ASHA optimization

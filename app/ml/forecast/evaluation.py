@@ -19,7 +19,8 @@ from sklearn.metrics import (
     mean_squared_error,
 )
 
-from app.ml.report import generate_pdf_report
+from app.reporting.report import generate_pdf_report
+from app.data.stations import STATIONS, STATIONS_BY_REGION
 
 _CATEGORY_LABELS = ["Caution", "Extreme Caution", "Danger", "Extreme Danger"]
 
@@ -63,6 +64,109 @@ def _station_names(X: pd.DataFrame, labels: Mapping[int, str] | None) -> pd.Seri
     if labels:
         return codes.map(lambda c: labels.get(int(c), f"station_{int(c)}"))
     return codes.map(lambda c: f"station_{int(c)}")
+
+
+def _get_region_from_station_id(station_id: str) -> str:
+    """Get region from station_id using canonical STATIONS_BY_REGION mapping."""
+    for region, station_ids in STATIONS_BY_REGION.items():
+        if station_id in station_ids:
+            return region.capitalize()
+    return "Unknown"
+
+
+def _get_thai_region(lat: float, lon: float) -> str:
+    """Determine Thai region from coordinates (fallback when station_id unavailable)."""
+    # Northern: lat > 16°N
+    if lat > 16.0:
+        return "Northern"
+    # Northeastern: lat > 13°N and lon < 102°E
+    if lat > 13.0 and lon < 102.0:
+        return "Northeastern"
+    # Central: 13°N <= lat <= 16°N and 100°E <= lon <= 102°E
+    if 13.0 <= lat <= 16.0 and 100.0 <= lon <= 102.0:
+        return "Central"
+    # Eastern: lat < 13°N and lon > 101°E
+    if lat < 13.0 and lon > 101.0:
+        return "Eastern"
+    # Southern: lat < 13°N and lon < 101°E
+    if lat < 13.0 and lon < 101.0:
+        return "Southern"
+    return "Unknown"
+
+
+def _get_season(month: int) -> str:
+    """Determine Thai season from month (1-12)."""
+    # Hot season: March-May (3-5)
+    if 3 <= month <= 5:
+        return "Hot"
+    # Rainy season: June-October (6-10)
+    if 6 <= month <= 10:
+        return "Rainy"
+    # Cool season: November-February (11-2)
+    return "Cool"
+
+
+def _get_hour_bucket(hour: int) -> str:
+    """Determine hour bucket from hour (0-23)."""
+    # Night: 22-5
+    if hour >= 22 or hour < 5:
+        return "Night"
+    # Morning: 5-11
+    if 5 <= hour < 11:
+        return "Morning"
+    # Afternoon: 11-16
+    if 11 <= hour < 16:
+        return "Afternoon"
+    # Evening: 16-22
+    return "Evening"
+
+
+def _compute_grouped_metrics(
+    y_true: np.ndarray,
+    y_pred: np.ndarray,
+    X: pd.DataFrame,
+    group_col: str,
+    group_name: str,
+    horizon_h: int,
+) -> dict:
+    """Compute metrics for each group."""
+    if group_col not in X.columns:
+        return {}
+    
+    groups = X[group_col].unique()
+    grouped_metrics = {}
+    
+    for group in groups:
+        mask = X[group_col] == group
+        if mask.sum() < 10:  # Skip groups with too few samples
+            continue
+        group_y_true = y_true[mask]
+        group_y_pred = y_pred[mask]
+        group_X = X[mask]
+        
+        try:
+            group_metric = compute_metrics(
+                group_y_true,
+                group_y_pred,
+                group_X,
+                horizon_h=horizon_h,
+                runtime=None,
+                split_metadata=None,
+            )
+            # Simplify the output for grouped metrics
+            grouped_metrics[str(group)] = {
+                "count": int(mask.sum()),
+                "mae": group_metric["regression"]["mae"],
+                "rmse": group_metric["regression"]["rmse"],
+                "bias": group_metric["regression"]["bias"],
+                "skill_score": group_metric["baselines"]["skill_score"],
+                "danger_40_recall": group_metric["safety"]["danger_40"]["recall"],
+                "danger_42_recall": group_metric["safety"]["danger_42"]["recall"],
+            }
+        except Exception:
+            continue
+    
+    return grouped_metrics
 
 
 def _baseline_metrics(y_true: np.ndarray, X: pd.DataFrame, horizon_h: int = 1) -> dict:
@@ -172,6 +276,43 @@ def compute_metrics(
     # Clamp skill score to reasonable range [-1, 1] for sanity
     skill_score = max(-1.0, min(1.0, skill_score))
 
+    # Compute breakdown metrics by region, season, and hour bucket
+    breakdown_metrics = {}
+    
+    # Add season breakdown if month column exists
+    if "month" in X.columns:
+        X_with_season = X.copy()
+        X_with_season["season"] = X["month"].apply(_get_season)
+        breakdown_metrics["by_season"] = _compute_grouped_metrics(
+            y_true, y_pred, X_with_season, "season", "season", horizon_h
+        )
+    
+    # Add hour bucket breakdown if hour_sin/hour_cos columns exist
+    if {"hour_sin", "hour_cos"} <= set(X.columns):
+        X_with_hour_bucket = X.copy()
+        hours = _hours_from_features(X, len(X))
+        X_with_hour_bucket["hour_bucket"] = pd.Series(hours).apply(_get_hour_bucket)
+        breakdown_metrics["by_hour_bucket"] = _compute_grouped_metrics(
+            y_true, y_pred, X_with_hour_bucket, "hour_bucket", "hour_bucket", horizon_h
+        )
+    
+    # Add region breakdown using canonical STATIONS_BY_REGION when station_enc available
+    if "station_enc" in X.columns:
+        X_with_region = X.copy()
+        # Map station_enc to station_id, then to region using canonical mapping
+        station_ids = _station_names(X, labels={i: sid for i, sid in enumerate(sorted(STATIONS.keys()))})
+        X_with_region["region"] = station_ids.apply(_get_region_from_station_id)
+        breakdown_metrics["by_region"] = _compute_grouped_metrics(
+            y_true, y_pred, X_with_region, "region", "region", horizon_h
+        )
+    # Fallback to coordinate-based region determination if station_enc unavailable
+    elif {"lat", "lon"} <= set(X.columns):
+        X_with_region = X.copy()
+        X_with_region["region"] = X.apply(lambda row: _get_thai_region(row["lat"], row["lon"]), axis=1)
+        breakdown_metrics["by_region"] = _compute_grouped_metrics(
+            y_true, y_pred, X_with_region, "region", "region", horizon_h
+        )
+
     return {
         "horizon_h": horizon_h,
         "regression": {
@@ -203,6 +344,7 @@ def compute_metrics(
             **(runtime or {}),
         },
         "split": split_metadata or {},
+        "breakdown": breakdown_metrics,
     }
 
 

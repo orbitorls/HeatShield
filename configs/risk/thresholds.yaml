@@ -4,14 +4,17 @@
 # ค่าเริ่มต้นจาก plan ของโปรเจกต์ — ค่าทุกตัวจะถูก re-tune ใน Phase 7 ด้วย
 # ข้อมูล hold-out ของแต่ละสถานี (coverage / false-alert rate).
 
-version: v0
+version: v1
 
 # --- heat index bands (Rothfusz, °C) ---------------------------------------
+# Thai-adapted WHO thresholds: Caution (27-32°C), Extreme Caution (32-40°C), 
+# Danger (40-54°C), Extreme Danger (>54°C)
 # ใช้คู่กับ adaptive percentile ใน app/core/adaptive_definition.py
 bands:
-  caution_c:        32.0     # 32–41 — Caution
-  extreme_caution_c: 41.0    # 41–54 — Extreme Caution
-  danger_c:          54.0    # 54+    — Danger / Extreme Danger
+  caution_c:        32.0     # 27–32 — Caution
+  extreme_caution_c: 40.0    # 32–40 — Extreme Caution
+  danger_c:          54.0    # 40–54 — Danger
+  extreme_danger_c:  54.0    # >54   — Extreme Danger
 
 # --- alert tiers driven by forecast quantiles + classifier ----------------
 # q90 here = the upper tail of the forecast PI (we use q05/q50/q95; q90 is the
@@ -21,7 +24,7 @@ alerts:
     description_en: "Forecast q90 reaches Danger band within horizon."
     description_th: "พยากรณ์ q90 ภายใน horizon แตะระดับ Danger"
     rule:
-      q90_hi_c_gte: 42.0      # initial — keep aligned with bands.extreme_caution_c
+      q90_hi_c_gte: 40.0      # aligned with danger_c threshold (40°C)
       lead_time_h_min: 6
       consecutive_hours_min: 2
 

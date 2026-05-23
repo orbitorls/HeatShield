@@ -2,6 +2,7 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone, timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,11 +11,20 @@ from app.api import heat_index, events, events_auto, risk, whatif, action_card, 
 
 logger = logging.getLogger(__name__)
 
+# Thailand timezone (ICT: UTC+7)
+THAILAND_TZ = timezone(timedelta(hours=7))
+
+def to_thailand_time(dt: datetime) -> str:
+    """Convert datetime to Thailand timezone string."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(THAILAND_TZ).strftime("%Y-%m-%d %H:%M:%S ICT")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: validate config, then pre-warm models on startup."""
-    from app.core.config import ConfigValidationError, validate_config
+    from app.infrastructure.config import ConfigValidationError, validate_config
     
     try:
         validate_config()
@@ -51,12 +61,13 @@ def _prewarm_v3_forecasters() -> None:
 
 
 app = FastAPI(
-    title="HeatShield AI",
+    title="HeatShield AI - Thailand",
     description=(
-        "Adaptive Heat-Health Risk Intelligence for School Safety and Outdoor Workers. "
-        "Converts weather data into actionable risk scores and decision support."
+        "Adaptive Heat-Health Risk Intelligence for Thailand. "
+        "Converts weather data into actionable risk scores and decision support "
+        "for school safety, outdoor workers, and public health across all regions of Thailand."
     ),
-    version="0.1.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -91,13 +102,15 @@ def health():
 @app.get("/health/detailed")
 def health_detailed():
     """Detailed health check with monitoring metrics and system status."""
-    from app.core.monitoring import get_health_report
+    from app.infrastructure.monitoring import get_health_report
     from app.data.stations import STATIONS
-    from app.data.circuit_breaker import get_tmd_circuit
+    from app.data.clients.circuit_breaker import get_tmd_circuit
 
     return {
         "status": "ok",
-        "service": "HeatShield AI",
+        "service": "HeatShield AI - Thailand",
+        "timezone": "ICT (UTC+7)",
+        "current_time_thailand": to_thailand_time(datetime.now()),
         "stations_configured": len(STATIONS),
         "station_regions": {
             "central": 3,

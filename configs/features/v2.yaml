@@ -48,6 +48,7 @@ required_columns:
   - cloud_pct
   - wind_ms
   - lst_c
+  - precip_mm
   - source
   - station_id
   - ts_utc

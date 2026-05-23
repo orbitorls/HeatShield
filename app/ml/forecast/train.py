@@ -33,7 +33,7 @@ from app.ml.forecast.splitting import (
     split_xy,
     time_series_cv_splits,
 )
-from app.ml.forecast._optuna_utils import feature_signature, forecast_model_root, write_heartbeat
+from app.ml.forecast.hpo.optuna_utils import feature_signature, forecast_model_root, write_heartbeat
 
 logger = logging.getLogger(__name__)
 optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -96,7 +96,7 @@ def _climatology_mae(y_true: np.ndarray, X: pd.DataFrame) -> float:
     if "hour_sin" not in X.columns or "hour_cos" not in X.columns:
         return float(np.abs(y_true - y_true.mean()).mean())
     # Approximate hour from sin/cos
-    hours = np.round(np.arctan2(X["hour_sin"].values, X["hour_cos"].values) / (2 * np.pi / 24)) % 24
+    hours = np.round(np.arctan2(X["hour_sin"].to_numpy(), X["hour_cos"].to_numpy()) / (2 * np.pi / 24)) % 24
     hourly_mean = pd.Series(y_true).groupby(hours).transform("mean").values
     return float(mean_absolute_error(y_true, hourly_mean))
 

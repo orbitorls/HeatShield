@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-import numpy as np
 import pandas as pd
 
 from app.data.loaders import read_observations
@@ -56,9 +55,16 @@ class SourceComparisonResult:
         }
 
 
-def _get_source_df(station_id: str, day: date, source: str) -> pd.DataFrame | None:
-    """Read observations for a specific source only."""
-    df = read_observations(station_id, day, day)
+def _get_source_df(station_id: str, day: date, source: str, *, dedupe_sources: bool = False) -> pd.DataFrame | None:
+    """Read observations for a specific source only.
+
+    Args:
+        station_id: Station identifier
+        day: Date to read
+        source: Source name to filter (e.g., "tmd", "era5", "nasa_power")
+        dedupe_sources: If False, preserve all sources (for cross-source comparison)
+    """
+    df = read_observations(station_id, day, day, dedupe_sources=dedupe_sources)
     if df.empty:
         return None
     # Filter to specific source
@@ -75,51 +81,42 @@ def compare_sources(
     source_a: str = "tmd",
     source_b: str = "nasa_power",
 ) -> SourceComparisonResult | None:
-    """Compare two data sources for a station on a given day.
+    """Compare observations from two data sources for the same station and day.
 
-    Args:
-        station_id: Station ID
-        day: Date to compare
-        source_a: Primary source (e.g., "tmd")
-        source_b: Secondary source (e.g., "nasa_power", "era5")
-
-    Returns:
-        SourceComparisonResult or None if insufficient data
+    Returns None if either source has no data for the day.
+    Uses raw mode (dedupe_sources=False) to preserve all sources for comparison.
     """
-    df_a = _get_source_df(station_id, day, source_a)
-    df_b = _get_source_df(station_id, day, source_b)
+    df_a = _get_source_df(station_id, day, source_a, dedupe_sources=False)
+    df_b = _get_source_df(station_id, day, source_b, dedupe_sources=False)
 
-    if df_a is None or df_b is None:
+    if df_a is None or df_b is None or df_a.empty or df_b.empty:
         return None
 
-    # Align by timestamp
+    # Align timestamps to the hour
+    df_a = df_a.copy()
+    df_b = df_b.copy()
+    df_a["ts_utc"] = pd.to_datetime(df_a["ts_utc"], utc=True).dt.floor("h")
+    df_b["ts_utc"] = pd.to_datetime(df_b["ts_utc"], utc=True).dt.floor("h")
+
     merged = pd.merge(
         df_a[["ts_utc", "temp_c", "rh"]],
         df_b[["ts_utc", "temp_c", "rh"]],
         on="ts_utc",
         suffixes=(f"_{source_a}", f"_{source_b}"),
+        how="inner",
     )
 
-    if len(merged) < _MIN_OVERLAP_HOURS:
+    if merged.empty:
         return None
 
     temp_diff = merged[f"temp_c_{source_a}"] - merged[f"temp_c_{source_b}"]
     rh_diff = merged[f"rh_{source_a}"] - merged[f"rh_{source_b}"]
 
-    temp_bias = float(np.mean(temp_diff))
-    rh_bias = float(np.mean(rh_diff))
-    temp_max_diff = float(np.max(np.abs(temp_diff)))
-    rh_max_diff = float(np.max(np.abs(rh_diff)))
-
-    issues: list[str] = []
-    if temp_max_diff > _TEMP_DIVERGENCE_THRESHOLD_C:
-        issues.append(
-            f"Temperature divergence {temp_max_diff:.1f}°C > {_TEMP_DIVERGENCE_THRESHOLD_C}°C threshold"
-        )
-    if rh_max_diff > _RH_DIVERGENCE_THRESHOLD_PCT:
-        issues.append(
-            f"RH divergence {rh_max_diff:.1f}% > {_RH_DIVERGENCE_THRESHOLD_PCT}% threshold"
-        )
+    issues = []
+    if temp_diff.abs().max() > 5.0:
+        issues.append(f"Max temp diff {temp_diff.abs().max():.2f}°C exceeds threshold")
+    if rh_diff.abs().max() > 20.0:
+        issues.append(f"Max RH diff {rh_diff.abs().max():.2f}% exceeds threshold")
 
     return SourceComparisonResult(
         station_id=station_id,
@@ -127,10 +124,10 @@ def compare_sources(
         source_a=source_a,
         source_b=source_b,
         overlap_hours=len(merged),
-        temp_bias_c=temp_bias,
-        rh_bias_pct=rh_bias,
-        temp_max_diff_c=temp_max_diff,
-        rh_max_diff_pct=rh_max_diff,
+        temp_bias_c=float(temp_diff.mean()),
+        rh_bias_pct=float(rh_diff.mean()),
+        temp_max_diff_c=float(temp_diff.abs().max()),
+        rh_max_diff_pct=float(rh_diff.abs().max()),
         is_valid=len(issues) == 0,
         issues=issues,
     )
@@ -163,7 +160,7 @@ def validate_station_day(
 
     missing_sources = []
     for src in ["tmd", "era5", "nasa_power"]:
-        df_src = _get_source_df(station_id, day, src)
+        df_src = _get_source_df(station_id, day, src, dedupe_sources=False)
         if df_src is None or len(df_src) < 6:
             missing_sources.append(src)
 

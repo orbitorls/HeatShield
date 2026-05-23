@@ -133,6 +133,9 @@ STATIONS: dict[str, WeatherStation] = {
     ),
 }
 
+# Convenience flat list of all station IDs
+STATION_IDS: list[str] = sorted(STATIONS)
+
 # Regional grouping for convenience
 STATIONS_BY_REGION: dict[str, list[str]] = {
     "central": ["BKK_01", "NSW_01", "SPB_01"],

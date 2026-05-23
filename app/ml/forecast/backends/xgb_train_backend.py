@@ -20,7 +20,7 @@ import pandas as pd
 from app.ml.forecast.base import BaseForecaster, PredictionBundle
 from app.ml.forecast.conformal import MondianCQRCalibrator
 from app.ml.forecast.splitting import apply_feature_medians, fit_feature_medians, split_xy_4way
-from app.ml.forecast._optuna_utils import feature_signature, forecast_model_root, write_heartbeat
+from app.ml.forecast.hpo.optuna_utils import feature_signature, forecast_model_root, write_heartbeat
 
 logger = logging.getLogger(__name__)
 
@@ -268,9 +268,11 @@ class XGBoostTrainForecaster:
             
             return np.mean(maes)
 
-        # Use a unique study name per (station, horizon, feature signature)
+        # Use a unique study name per (station, horizon, feature signature, version)
         sig = feature_signature(X_tune.columns.tolist(), extra=f"h{horizon_h}")
-        study_name = f"xgb_{self._station_id}_h{horizon_h}_{sig}"
+        from app.ml.forecast.hpo.optuna_utils import get_study_version
+        study_ver = get_study_version()
+        study_name = f"xgb_{self._station_id}_h{horizon_h}_{sig}_{study_ver}"
         
         study = optuna.create_study(
             study_name=study_name,

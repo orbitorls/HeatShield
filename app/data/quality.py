@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import pandas as pd
 
 from app.data.schemas import StationObservation
 
@@ -53,6 +54,38 @@ def filter_observations(
                 }
             )
     return kept, dropped
+
+
+def calculate_data_quality_metrics(df: pd.DataFrame) -> dict:
+    """Calculate data quality metrics for a DataFrame.
+    
+    Returns dict with:
+    - rows: total number of rows
+    - gaps: number of time gaps > 1 hour (if ts_utc present)
+    - outliers: number of values outside expected bounds
+    """
+    metrics = {"rows": len(df), "gaps": 0, "outliers": 0}
+    
+    if len(df) == 0:
+        return metrics
+    
+    # Calculate gaps if timestamp column exists
+    if "ts_utc" in df.columns or ("ts_utc" in df.attrs and len(df.attrs["ts_utc"]) == len(df)):
+        ts = df["ts_utc"] if "ts_utc" in df.columns else pd.Series(df.attrs["ts_utc"])
+        ts = pd.to_datetime(ts)
+        ts = ts.sort_values()
+        if len(ts) > 1:
+            hour_diffs = ts.diff().dt.total_seconds() / 3600
+            # Count gaps > 1 hour (allowing small floating point errors)
+            metrics["gaps"] = int((hour_diffs > 1.01).sum())
+    
+    # Calculate outliers for numeric columns
+    for col, (lo, hi) in _BOUNDS.items():
+        if col in df.columns:
+            outliers = ((df[col] < lo) | (df[col] > hi)).sum()
+            metrics["outliers"] += int(outliers)
+    
+    return metrics
 
 
 def _dewpoint(temp_c: float, rh: float) -> float:

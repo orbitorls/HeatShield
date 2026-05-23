@@ -9,9 +9,9 @@ from enum import Enum
 
 class HeatIndexCategory(str, Enum):
     CAUTION = "Caution"              # 27–32°C  — ความเหนื่อยล้าจากความร้อน
-    EXTREME_CAUTION = "ExtremeC"     # 33–41°C  — ตะคริว/ความเหนื่อยล้า
-    DANGER = "Danger"                # 42–51°C  — ตะคริว/เพลียแดดเป็นไปได้มาก
-    EXTREME_DANGER = "ExtremeDanger" # ≥52°C    — ฮีทสโตรกใกล้จะเกิด
+    EXTREME_CAUTION = "ExtremeC"     # 32–40°C  — ตะคริว/ความเหนื่อยล้า
+    DANGER = "Danger"                # 40–54°C  — ตะคริว/เพลียแดดเป็นไปได้มาก
+    EXTREME_DANGER = "ExtremeDanger" # >54°C    — ฮีทสโตรกใกล้จะเกิด
 
 
 @dataclass(frozen=True)
@@ -109,10 +109,10 @@ def compute(temp_c: float, humidity_rh: float) -> HeatIndexResult:
 
 
 def _categorize(hi_c: float) -> HeatIndexCategory:
-    if hi_c >= 52:
+    if hi_c > 54:
         return HeatIndexCategory.EXTREME_DANGER
-    if hi_c >= 42:
+    if hi_c >= 40:
         return HeatIndexCategory.DANGER
-    if hi_c >= 33:
+    if hi_c >= 32:
         return HeatIndexCategory.EXTREME_CAUTION
     return HeatIndexCategory.CAUTION

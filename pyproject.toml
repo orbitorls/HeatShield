@@ -17,5 +17,9 @@ markers = [
     "slow: requires real ingested data + trained model (run with: pytest -m slow)",
 ]
 
+[tool.pyright]
+extraPaths = ["."]
+
+
 [tool.setuptools.packages.find]
 include = ["app*"]

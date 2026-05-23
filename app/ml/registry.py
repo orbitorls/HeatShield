@@ -406,11 +406,22 @@ def save_model_v3(
     return slot_dir
 
 
+# Registry maps backend_name → (module_path, class_name).
+# New backends plug in here — no changes needed to load_latest_v3.
+_BACKEND_REGISTRY: dict[str, tuple[str, str]] = {
+    "lightgbm_quantile": ("app.ml.forecast.backends.lgbm_backend", "LGBMForecaster"),
+    "lightgbm_hi_quantile": ("app.ml.forecast.backends.lgbm_backend", "LGBMDirectHIForecaster"),
+    "xgboost": ("app.ml.forecast.backends.xgb_backend", "XGBForecaster"),
+    "catboost_quantile": ("app.ml.forecast.backends.catboost_backend", "CatBoostForecaster"),
+    "xgboost_safety": ("app.ml.forecast.backends.xgb_safety_backend", "XGBoostSafetyForecaster"),
+}
+
+
 def load_latest_v3(station_id: str, horizon_h: int):
     """Load the v3 forecaster for (station_id, horizon_h).
 
-    Reads choice_matrix.json to find backend_name, then imports and loads
-    the correct backend class from app.ml.forecast.backends.
+    Reads bundle.json to find backend_name, then dispatches to the correct
+    backend class via _BACKEND_REGISTRY (lazy imports — no startup overhead).
 
     Raises FileNotFoundError if no v3 model exists for this (station, horizon).
     """
@@ -422,25 +433,16 @@ def load_latest_v3(station_id: str, horizon_h: int):
     bundle = json.loads(bundle_path.read_text())
     backend_name = bundle["backend_name"]
 
-    if backend_name == "lightgbm_quantile":
-        from app.ml.forecast.backends.lgbm_backend import LGBMForecaster
-        return LGBMForecaster.load(slot_dir)
-    elif backend_name == "lightgbm_hi_quantile":
-        from app.ml.forecast.backends.lgbm_backend import LGBMDirectHIForecaster
-        return LGBMDirectHIForecaster.load(slot_dir)
-    elif backend_name == "xgboost":
-        from app.ml.forecast.backends.xgb_backend import XGBForecaster
-        return XGBForecaster.load(slot_dir)
-    elif backend_name == "catboost_quantile":
-        from app.ml.forecast.backends.catboost_backend import CatBoostForecaster
-        return CatBoostForecaster.load(slot_dir)
-    elif backend_name == "tabpfn":
-        raise NotImplementedError(
-            "TabPFN backend is not yet implemented. "
-            "Re-train with --backend lightgbm to use an available backend."
+    entry = _BACKEND_REGISTRY.get(backend_name)
+    if entry is None:
+        raise ValueError(
+            f"Unknown backend_name={backend_name!r} in {bundle_path}. "
+            f"Known backends: {sorted(_BACKEND_REGISTRY)}"
         )
-    else:
-        raise ValueError(f"Unknown backend_name={backend_name!r} in {bundle_path}")
+    import importlib
+    module_path, class_name = entry
+    cls = getattr(importlib.import_module(module_path), class_name)
+    return cls.load(slot_dir)
 
 
 def list_v3_models() -> dict:
