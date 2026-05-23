@@ -22,9 +22,17 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
-from app.core.calibration import Calibration  # bias-correction module / โมดูลแก้อคติ
+from app.ml.calibration import Calibration  # bias-correction module / โมดูลแก้อคติ
+from app.ml.safety import SafetyPostProcessor, MAX_SUPPORTED_HORIZON
 from app.data.schemas import ForecastPoint, StationObservation
-from app.ml.forecast.features import build_features, _DEFAULT_LAGS_H, _DEFAULT_ROLLING_H
+from app.ml.forecast.features import (
+    build_features,
+    _DEFAULT_LAGS_H,
+    _DEFAULT_ROLLING_H,
+    _get_lags_for_horizon,
+    _get_rolling_for_horizon,
+    calculate_required_history_hours,
+)
 from app.ml.registry import load_latest
 
 # Root directory of v3 model artifacts — ตำแหน่งไฟล์โมเดล v3
@@ -34,6 +42,21 @@ logger = logging.getLogger(__name__)
 
 _PI_WIDTH_THRESHOLD = 4.0  # degrees C — flag low confidence above this
 _STALE_MINUTES = 60         # minutes — flag low confidence if newest obs is older than this
+
+
+def _compute_last_hi(obs_sorted: list) -> float | None:
+    """Compute the last observed heat index from recent observations.
+
+    Uses Rothfusz equation: HI from temp_c and rh.
+    Returns None if temp_c or rh is missing.
+    """
+    if not obs_sorted:
+        return None
+    last = obs_sorted[-1]
+    if last.temp_c is None or last.rh is None:
+        return None
+    from app.core.heat_index import compute as _hi_compute
+    return float(_hi_compute(last.temp_c, last.rh).heat_index)
 
 
 def _ensemble_predict(boosters: list, dmat) -> float:
@@ -71,7 +94,7 @@ def predict(
 
     Args:
         station_id: Station identifier.
-        recent_obs: Recent observations. Must cover at least max(lags_h)+1 = 25 hours.
+        recent_obs: Recent observations. Must cover at least max(lags_h)+1 hours for the longest horizon.
         horizons: Forecast horizons in hours.
 
     Returns:
@@ -84,10 +107,14 @@ def predict(
     if horizons is None:
         horizons = [6, 24, 48]
 
-    if len(recent_obs) < max(_DEFAULT_LAGS_H) + 2:
+    # Calculate required history based on the longest requested horizon
+    required_history_hours = calculate_required_history_hours(horizons)
+
+    if len(recent_obs) < required_history_hours + 1:
+        max_horizon = max(horizons)
         raise ValueError(
-            f"Need at least {max(_DEFAULT_LAGS_H) + 2} recent observations (got {len(recent_obs)}). "
-            f"Provide at least {max(_DEFAULT_LAGS_H) + 1} hours of hourly data."
+            f"Need at least {required_history_hours + 1} recent observations for h{max_horizon} forecast (got {len(recent_obs)}). "
+            f"Provide at least {required_history_hours} hours of hourly data."
         )
 
     loaded = load_latest("forecast")
@@ -135,12 +162,15 @@ def predict(
     for h in horizons:
         try:
             _forecaster = _reg.load_latest_v3(station_id, h)
+            # Use horizon-specific lags/rolling for feature building
+            _horizon_lags = _get_lags_for_horizon(h)
+            _horizon_rolling = _get_rolling_for_horizon(h)
             try:
                 _X_v3, _ = build_features(
                     df,
                     horizon_h=h,
-                    lags_h=_DEFAULT_LAGS_H,
-                    rolling_h=_DEFAULT_ROLLING_H,
+                    lags_h=_horizon_lags,
+                    rolling_h=_horizon_rolling,
                 )
             except (ValueError, KeyError) as exc:
                 logger.warning("v3 forecaster failed for station=%s h=%d: %s", station_id, h, exc)
@@ -188,6 +218,30 @@ def predict(
                 _hi = _hi_cal
                 _lo = _lo + _delta       # เลื่อน lower bound ตาม delta / preserve PI width
                 _hi_up = _hi_up + _delta # เลื่อน upper bound ตาม delta / preserve PI width
+
+            # ----------------------------------------------------------------
+            # Safety PostProcessor — blending + danger boost + PI sanity
+            # ----------------------------------------------------------------
+            _last_hi = _compute_last_hi(obs_sorted) if h <= MAX_SUPPORTED_HORIZON else None
+            if h <= MAX_SUPPORTED_HORIZON:
+                _pp = SafetyPostProcessor(station_id, h)
+                _hi, _lo, _hi_up, _pp_reason = _pp.process(
+                    hi_mean=_hi,
+                    hi_lower=_lo,
+                    hi_upper=_hi_up,
+                    last_observed_hi=_last_hi,
+                    danger_proba=float(_bundle.danger_proba[-1]) if _bundle.danger_proba is not None else None,
+                )
+                if _pp_reason and low_confidence:
+                    confidence_reason = f"{confidence_reason}; post_process: {_pp_reason}"
+                elif _pp_reason:
+                    low_confidence = True
+                    confidence_reason = f"post_process: {_pp_reason}"
+            else:
+                _pp_reason = f"horizon h{h} > max ({MAX_SUPPORTED_HORIZON}h) — blocked"
+                if not low_confidence:
+                    low_confidence = True
+                    confidence_reason = _pp_reason
 
             _results_v3.append(ForecastPoint(
                 station_id=station_id,

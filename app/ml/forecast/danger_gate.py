@@ -49,12 +49,13 @@ def _lgbm_device() -> str:
 class DangerGate:
     """Three-class danger gate with warning/danger thresholds."""
 
-    def __init__(self, gate_backend: Literal["lightgbm", "brf"] = "lightgbm") -> None:
+    def __init__(self, gate_backend: Literal["lightgbm", "brf"] = "lightgbm", recall_weight: float = 1.0) -> None:
         self.warning_floor: float = 38.0
         self.danger_floor: float = 42.0
         self.warning_threshold: float = 0.30
         self.danger_threshold: float = 0.35
         self.gate_backend: str = gate_backend
+        self.recall_weight: float = recall_weight
         self._clf = None
         self._is_legacy_binary: bool = False
 
@@ -223,15 +224,15 @@ class DangerGate:
             precision_min=0.50,
             recall_min=0.55,
             default=0.30,
-            beta=1.0,  # equal weight for precision/recall on warning
+            beta=1.0,
         )
         self.danger_threshold = self._best_threshold(
             proba[:, 2],
             danger_true,
-            precision_min=0.35,
-            recall_min=0.30,
-            default=0.35,
-            beta=2.0,  # recall-heavy for danger tier
+            precision_min=0.25,
+            recall_min=0.50,
+            default=0.25,
+            beta=2.5 * self.recall_weight,
         )
 
     @staticmethod
@@ -335,6 +336,7 @@ class DangerGate:
             "warning_threshold": self.warning_threshold,
             "danger_threshold": self.danger_threshold,
             "gate_backend": self.gate_backend,
+            "recall_weight": self.recall_weight,
             "version": "v3-tier",
         }
         (path / "gate_meta.json").write_text(json.dumps(meta, indent=2))
@@ -349,6 +351,7 @@ class DangerGate:
         obj.danger_floor = float(meta.get("danger_floor", meta.get("danger_thresh", 42.0)))
         obj.warning_threshold = float(meta.get("warning_threshold", meta.get("threshold", 0.30)))
         obj.danger_threshold = float(meta.get("danger_threshold", meta.get("threshold", 0.35)))
+        obj.recall_weight = float(meta.get("recall_weight", 1.0))
 
         if gate_backend == "brf":
             clf_path = path / "gate_clf.joblib"

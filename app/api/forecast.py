@@ -12,8 +12,10 @@ from app.data.loaders import read_observations
 from app.data.schemas import ForecastRequest, ForecastResponse, StationObservation
 from app.data.stations import STATIONS
 from app.ml.forecast.predict import predict
-from app.core.edr import edr
-from app.core.monitoring import record_prediction
+from app.ml.forecast.features import calculate_required_history_hours
+from app.ml.safety import MAX_SUPPORTED_HORIZON
+from app.infrastructure.edr import edr
+from app.infrastructure.monitoring import record_prediction
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -51,6 +53,23 @@ async def forecast_heat_index(req: ForecastRequest) -> ForecastResponse:
             detail=f"Unknown station_id '{req.station_id}'. Valid: {list(STATIONS.keys())}"
         )
 
+    # Filter disabled horizons (h48/h72 have negative skill across all stations)
+    original_horizons = list(req.horizons)
+    valid_horizons = [h for h in req.horizons if h <= MAX_SUPPORTED_HORIZON]
+    if not valid_horizons:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No valid forecast horizons. Maximum supported horizon is {MAX_SUPPORTED_HORIZON}h. "
+                   f"Requested: {original_horizons}"
+        )
+    if len(valid_horizons) < len(original_horizons):
+        skipped = [h for h in original_horizons if h not in valid_horizons]
+        logger.warning(
+            "Horizons %s requested for %s but capped at %dh — skipping %s",
+            original_horizons, req.station_id, MAX_SUPPORTED_HORIZON, skipped,
+        )
+    req.horizons = valid_horizons
+
     recent_obs: list[StationObservation] | None = req.recent_obs
 
     # Check in-memory cache for identical requests (thread-safe)
@@ -67,9 +86,11 @@ async def forecast_heat_index(req: ForecastRequest) -> ForecastResponse:
     # Load from parquet if not provided (offload blocking I/O to thread pool)
     if recent_obs is None:
         today = date.today()
-        # Pull 3 days to ensure we have 48+ hours of recent observations
-        # (predict() requires max(lags_h)+2 = 26 minimum)
-        start = today - timedelta(days=3)
+        # Calculate required history based on requested horizons
+        required_hours = calculate_required_history_hours(req.horizons)
+        # Convert hours to days (add 1 day buffer for safety)
+        days_needed = (required_hours / 24) + 1
+        start = today - timedelta(days=days_needed)
         try:
             df = await asyncio.to_thread(read_observations, req.station_id, start, today)
         except Exception as exc:
